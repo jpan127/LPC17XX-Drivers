@@ -200,7 +200,7 @@ typedef struct
 } LPC_PINCON_TypeDef;
 
 /*------------- General Purpose Input/Output (GPIO) --------------------------*/
-typedef struct
+typedef struct LPC_GPIO_type // CHANGED THIS
 {
   union {
     __IO uint32_t FIODIR;

@@ -1,5 +1,5 @@
 ENTITY 			?= DBG
-PROJ 			?= HelloWorld
+PROJ 			?= CMPE146
 DEBUG 			?= 0
 
 CC              = arm-none-eabi-gcc
@@ -19,35 +19,38 @@ else
 	DEBUG_FLAG = -Os
 endif
 
-CFLAGS = -mcpu=cortex-m3 \
-    -mthumb -fmessage-length=0 \
-    -ffunction-sections -fdata-sections \
-    -Wall -Wshadow -Wlogical-op \
-    $(DEBUG_FLAG) \
-    -Wfloat-equal -D BUILD_CFG_MPU=0 \
-    -D DEBUG=$(DEBUG) \
-    -fabi-version=0 \
-    -fno-exceptions \
-    -I"$(LIB_DIR)/" \
-    -I"$(LIB_DIR)/newlib" \
-    -I"$(LIB_DIR)/L0_LowLevel" \
-    -I"$(LIB_DIR)/L1_FreeRTOS" \
-    -I"$(LIB_DIR)/L1_FreeRTOS/include" \
-    -I"$(LIB_DIR)/L1_FreeRTOS/portable" \
-    -I"$(LIB_DIR)/L1_FreeRTOS/portable/no_mpu" \
-    -I"$(LIB_DIR)/L2_Drivers" \
-    -I"$(LIB_DIR)/L2_Drivers/base" \
-    -I"$(LIB_DIR)/L3_Utils" \
-    -I"$(LIB_DIR)/L3_Utils/tlm" \
-    -I"$(LIB_DIR)/L4_IO" \
-    -I"$(LIB_DIR)/L4_IO/fat" \
-    -I"$(LIB_DIR)/L4_IO/wireless" \
-    -I"$(LIB_DIR)/L5_Application" \
-    -I"$(PROJ_DIR)/$(PROJ)/L2_Drivers" \
-    -I"$(PROJ_DIR)/$(PROJ)/L3_Utils" \
-    -I"$(PROJ_DIR)/$(PROJ)/L4_IO" \
-    -I"$(PROJ_DIR)/$(PROJ)/L5_Application" \
+CFLAGS = -mcpu=cortex-m3 						\
+    -mthumb -fmessage-length=0 					\
+    -ffunction-sections -fdata-sections 		\
+    -Wall -Wshadow -Wlogical-op 				\
+    $(DEBUG_FLAG) 								\
+    -Wfloat-equal -D BUILD_CFG_MPU=0 			\
+    -D DEBUG=$(DEBUG) 							\
+    -fabi-version=0 							\
+    -fno-exceptions 							\
+    -I"$(LIB_DIR)/" 							\
+    -I"$(LIB_DIR)/newlib" 						\
+    -I"$(LIB_DIR)/L0_LowLevel" 					\
+    -I"$(LIB_DIR)/L1_FreeRTOS" 					\
+    -I"$(LIB_DIR)/L1_FreeRTOS/include" 			\
+    -I"$(LIB_DIR)/L1_FreeRTOS/portable" 		\
+    -I"$(LIB_DIR)/L1_FreeRTOS/portable/no_mpu" 	\
+    -I"$(LIB_DIR)/L2_Drivers" 					\
+    -I"$(LIB_DIR)/L2_Drivers/base" 				\
+    -I"$(LIB_DIR)/L3_Utils" 					\
+    -I"$(LIB_DIR)/L3_Utils/tlm" 				\
+    -I"$(LIB_DIR)/L4_IO" 						\
+    -I"$(LIB_DIR)/L4_IO/fat" 					\
+    -I"$(LIB_DIR)/L4_IO/wireless" 				\
+    -I"$(LIB_DIR)/L5_Application" 				\
+    -I"$(PROJ_DIR)/$(PROJ)/L2_Drivers" 			\
+    -I"$(PROJ_DIR)/$(PROJ)/L3_Utils" 			\
+    -I"$(PROJ_DIR)/$(PROJ)/L4_IO"	 			\
+    -I"$(PROJ_DIR)/$(PROJ)/L5_Application" 		\
     -I"$(PROJ_DIR)/$(PROJ)/"
+
+#    -I"$(PROJ_DIR)/$(PROJ)/L5_Application/Lab2" \
+    -I"$(PROJ_DIR)/$(PROJ)/L5_Application/drivers" \
 
 PREBUILD        	= $(PROJ_DIR)/$(PROJ)/_can_dbc/generated_can.h
 LIBRARIES			= $(shell find $(LIB_DIR) -name '*.c' -o -name '*.cpp')
