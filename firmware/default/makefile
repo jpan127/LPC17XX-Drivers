@@ -13,6 +13,9 @@ PROJ_DIR		= applications
 LIB_DIR			= lib
 BIN_DIR			= bin
 
+MY_DRIVERS 		= L5_Application/drivers
+MY_LABS			= L5_Application/labs
+
 ifeq ($(DEBUG),1)
 	DEBUG_FLAG = -g
 else
@@ -46,11 +49,8 @@ CFLAGS = -mcpu=cortex-m3 						\
     -I"$(PROJ_DIR)/$(PROJ)/L2_Drivers" 			\
     -I"$(PROJ_DIR)/$(PROJ)/L3_Utils" 			\
     -I"$(PROJ_DIR)/$(PROJ)/L4_IO"	 			\
-    -I"$(PROJ_DIR)/$(PROJ)/L5_Application" 		\
+    -I"$(PROJ_DIR)/$(PROJ)/L5_Application"		\
     -I"$(PROJ_DIR)/$(PROJ)/"
-
-#    -I"$(PROJ_DIR)/$(PROJ)/L5_Application/Lab2" \
-    -I"$(PROJ_DIR)/$(PROJ)/L5_Application/drivers" \
 
 PREBUILD        	= $(PROJ_DIR)/$(PROJ)/_can_dbc/generated_can.h
 LIBRARIES			= $(shell find $(LIB_DIR) -name '*.c' -o -name '*.cpp')

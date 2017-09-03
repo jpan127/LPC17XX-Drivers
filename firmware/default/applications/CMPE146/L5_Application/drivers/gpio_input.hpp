@@ -1,4 +1,5 @@
-#include "gpio.hpp"
+#pragma once
+#include "L5_Application/drivers/gpio.hpp"
 
 // Use for input pins
 class GpioInput : public Gpio

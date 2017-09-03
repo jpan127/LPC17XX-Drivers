@@ -78,24 +78,15 @@ bool Gpio::IsLow()
 	return low;
 }
 
-void Gpio::Debounce()
-{
-	LPC_GPIO_Typedef *gpio_ptr = GetPointer();
-
-	while (gpio_ptr->FIOPIN & (1 << Pin));
-
-	delete gpio_ptr;
-}
-
 LPC_GPIO_Typedef* Gpio::GetPointer()
 {
 
 	switch (Port)
 	{
-		case PORT0: return LPC_GPIO0; break;
-		case PORT1: return LPC_GPIO1; break;
-		case PORT2: return LPC_GPIO2; break;
-		case PORT3: return LPC_GPIO3; break;
+		case GPIO_PORT0: return LPC_GPIO0; break;
+		case GPIO_PORT1: return LPC_GPIO1; break;
+		case GPIO_PORT2: return LPC_GPIO2; break;
+		case GPIO_PORT3: return LPC_GPIO3; break;
 
 		default:
 			assert(0 && "Unhandled GPIO port enum case!");

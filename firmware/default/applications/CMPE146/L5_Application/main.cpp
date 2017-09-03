@@ -1,10 +1,11 @@
 #include "tasks.hpp" 					// terminalTask
-// #include "switch2led_task.cpp"          // Lab1
-#include "UartTask.cpp"
-// #include "spi.cpp"
-// #include "interrupt.hpp"
-// #include "orientation.cpp"
-// #include "producer_consumer.cpp"
+#include "Switch2LedTask.cpp"         	// Lab1
+#include "UartTask.cpp"					// Lab2
+#include "SpiTask.cpp"					// Lab3
+// #include "interrupt.hpp"				// Lab4
+// #include ".hpp"							// Lab5
+// #include "orientation.cpp"				// Lab6
+// #include "producer_consumer.cpp"		// Lab7
 // #include "infrared.cpp"
 // #include "bluetooth.cpp"
 // #include "motor.hpp"
@@ -21,8 +22,8 @@ int main(void)
 	/******************************************************************************************************/
 
 	/* Lab 2 : UART : DONE */
-	scheduler_add_task(new UartSendTask(PRIORITY_LOW, PORT2));
-	scheduler_add_task(new UartEchoTask(PRIORITY_LOW, PORT3));
+	scheduler_add_task(new UartSendTask(PRIORITY_LOW, UART_PORT2));
+	scheduler_add_task(new UartEchoTask(PRIORITY_LOW, UART_PORT3));
 
 	/******************************************************************************************************/
 
