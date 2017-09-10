@@ -25,6 +25,20 @@
 
 #include "command_handler.hpp"
 
+/// Handler for gpio led LAB 1
+CMD_HANDLER_FUNC(simpleledHandler);
+
+/// Handler for orientation LAB 6
+CMD_HANDLER_FUNC(orientationHandler);
+
+/// Handler for suspend LAB 7
+CMD_HANDLER_FUNC(taskSuspendHandler);
+
+/// Handler for resume LAB 7
+CMD_HANDLER_FUNC(taskResumeHandler);
+
+//////////////////////////////////////////////////////////
+
 /// Handler for task list & CPU Information
 CMD_HANDLER_FUNC(taskListHandler);
 

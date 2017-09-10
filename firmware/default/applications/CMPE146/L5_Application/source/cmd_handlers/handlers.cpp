@@ -45,7 +45,43 @@
 #include "c_tlm_stream.h"
 #include "c_tlm_var.h"
 
+CMD_HANDLER_FUNC(simpleledHandler)
+{
+    if (cmdParams == "on")          LPC_GPIO0->FIOSET |= (1 << 1);
+    else if (cmdParams == "off")    LPC_GPIO0->FIOCLR |= (1 << 1);
 
+    return true;
+}
+
+CMD_HANDLER_FUNC(orientationHandler)
+{
+    scheduler_task *compute = scheduler_task::getTaskPtrByName("compute");
+
+    if (cmdParams == "on")  vTaskResume(compute->getTaskHandle());
+    else                    vTaskSuspend(compute->getTaskHandle());
+
+    return true;
+}
+
+CMD_HANDLER_FUNC(taskSuspendHandler)
+{
+    scheduler_task *task = scheduler_task::getTaskPtrByName(cmdParams());
+
+    vTaskSuspend(task->getTaskHandle());
+
+    return true;
+}
+
+CMD_HANDLER_FUNC(taskResumeHandler)
+{
+    scheduler_task *task = scheduler_task::getTaskPtrByName(cmdParams());
+
+    vTaskResume(task->getTaskHandle());
+
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
 
 CMD_HANDLER_FUNC(taskListHandler)
 {

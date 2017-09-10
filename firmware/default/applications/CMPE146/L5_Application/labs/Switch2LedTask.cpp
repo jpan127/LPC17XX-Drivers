@@ -20,10 +20,11 @@ public:
 										Led(LED_PORT, LED_PIN)
 	{
 		printf("[Switch2LedTask] Pins are set up.\n");
+		Led.SetLow();
 	}
 
 	bool run(void *p)
-	{
+	{	
 		// Turn on LED when SW0 is pressed.
 		if (B0.IsPressed()) {
 			Led.SetHigh();
@@ -35,6 +36,9 @@ public:
 			Led.SetLow();
 			printf("[Switch2LedTask] SW1, turning off LED.\n");
 		}
+
+		// Free CPU for context switching
+		vTaskDelay(100);
 
 		return true;
 	}

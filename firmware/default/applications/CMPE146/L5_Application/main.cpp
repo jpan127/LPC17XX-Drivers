@@ -1,7 +1,7 @@
-#include "tasks.hpp" 					// terminalTask
-#include "Switch2LedTask.cpp"         	// Lab1
-#include "UartTask.cpp"					// Lab2
-#include "SpiTask.cpp"					// Lab3
+#include "tasks.hpp" 									// terminalTask
+#include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
+#include "L5_Application/labs/UartTask.cpp"				// Lab2
+#include "L5_Application/labs/SpiTask.cpp"				// Lab3
 // #include "interrupt.hpp"				// Lab4
 // #include ".hpp"							// Lab5
 // #include "orientation.cpp"				// Lab6
@@ -14,16 +14,15 @@
 int main(void)
 {
 	/******************************************************************************************************/
-
 	/* Lab 1 : GPIO : DONE */
-	// scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
-	// scheduler_add_task(new terminalTask(PRIORITY_HIGH));
+	printf("Starting Lab 1...\n");
+	scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
 
 	/******************************************************************************************************/
 
 	/* Lab 2 : UART : DONE */
-	scheduler_add_task(new UartSendTask(PRIORITY_LOW, UART_PORT2));
-	scheduler_add_task(new UartEchoTask(PRIORITY_LOW, UART_PORT3));
+	// scheduler_add_task(new UartSendTask(PRIORITY_LOW, UART_PORT2));
+	// scheduler_add_task(new UartEchoTask(PRIORITY_LOW, UART_PORT3));
 
 	/******************************************************************************************************/
 
@@ -78,6 +77,7 @@ int main(void)
 
 	// scheduler_add_task(new MotorTask(PRIORITY_LOW));
 
+	scheduler_add_task(new terminalTask(PRIORITY_HIGH));
     scheduler_start();
     return -1;
 }

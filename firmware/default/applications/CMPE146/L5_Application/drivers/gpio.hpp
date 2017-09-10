@@ -1,5 +1,6 @@
 #pragma once
 #include <cassert>
+#include <stdio.h>
 #include "LPC17xx.h"
 
 #ifndef NULL
@@ -43,6 +44,7 @@ private:
 	// Get pointer to gpio register
 	LPC_GPIO_Typedef* GetPointer();
 
+	LPC_GPIO_Typedef *GpioPtr;
 	gpio_pin_t 		Pin;
 	gpio_port_t 	Port;
 };
