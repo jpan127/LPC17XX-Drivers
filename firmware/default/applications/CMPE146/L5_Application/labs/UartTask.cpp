@@ -1,240 +1,96 @@
-#include <stdio.h>
-#include <string>
-#include "LPC17xx.h"			// LPC GPIO
-#include "scheduler_task.hpp"	// scheduler_task
-#include "task.h"				// Task functions, vTaskDelay
-#include "sys_config.h"			// sys_get_cpu_clock
-#include "L5_Application/drivers/utilities.hpp"
-using namespace std;
+#include "L5_Application/labs/UartTask.hpp"
 
-#define MESSAGE  ("UART IS THE BEST PROTOCOL!")
-#define BAUDRATE (115200) //(38400)
+// Transmitting message
+const char *UART_MESSAGE = "UART IS THE BEST PROTOCOL!";
 
-typedef enum {UART_PORT0, UART_PORT1, UART_PORT2, UART_PORT3} uart_port_t;
-
-class UartTask : public scheduler_task
+// Uart error monitor task
+void UartErrorTask(void *UartPtr)
 {
-public:
-
-	UartTask(uint8_t priority, uart_port_t port) : scheduler_task("UartTask", 2048, priority) 
+	while (1)
 	{
-		Port = port;
-
-		uart_init(Port, BAUDRATE);
-	}
-
-	void uart_init(uart_port_t port, uint32_t baud_rate)
-	{
-		switch (port)
-		{
-			case UART_PORT0:
-				LPC_SC->PCONP 		|=  (1 << 3);
-				LPC_SC->PCLKSEL0 	&= ~(3 << 6);
-				LPC_SC->PCLKSEL0 	|=  (1 << 6);
-				LPC_PINCON->PINSEL0 &= ~(0xF << 4);
-				LPC_PINCON->PINSEL0 |=  (0x5 << 4);
-				LPC_UART0->LCR 		 =  (1 << 7);
-				LPC_UART0->DLM 		 = 0;
-				LPC_UART0->DLL 		 = sys_get_cpu_clock() / (16 * baud_rate);
-				LPC_UART0->LCR 		 = 3;
-				break;
-
-			case UART_PORT1:
-				LPC_SC->PCONP 		|=  (1 << 4);
-				LPC_SC->PCLKSEL0 	&= ~(3 << 8);
-				LPC_SC->PCLKSEL0 	|=  (1 << 8);
-				LPC_PINCON->PINSEL0 &= ~(3 << 30);	// TXD1 is PINSEL0
-				LPC_PINCON->PINSEL1 &= ~(3 <<  0);	// RXD1 is PINSEL1
-				LPC_PINCON->PINSEL0 |=  (1 << 30);	// Set pins as 01 01
-				LPC_PINCON->PINSEL0 |=  (1 <<  0);
-				LPC_UART1->LCR 		 =  (1 << 7);
-				LPC_UART1->DLM 		 = 0;
-				LPC_UART1->DLL 		 = sys_get_cpu_clock() / (16 * baud_rate);
-				LPC_UART1->LCR 		 = 3;
-				break;
-
-			case UART_PORT2:
-				LPC_SC->PCONP 		|=  (1 << 24);
-				LPC_SC->PCLKSEL1 	&= ~(3 << 16);
-				LPC_SC->PCLKSEL1 	|=  (1 << 16);
-				LPC_PINCON->PINSEL0 &= ~(0xF << 20);
-				LPC_PINCON->PINSEL0 |=  (0x5 << 20); // Set pins as 01 01
-				LPC_UART2->LCR 		 =  (1 << 7);
-				LPC_UART2->DLM 		 = 0;
-				LPC_UART2->DLL 		 = sys_get_cpu_clock() / (16 * baud_rate);
-				LPC_UART2->LCR 		 = 3;
-				break;
-
-			case UART_PORT3:
-				LPC_SC->PCONP 		|=  (1 << 25);
-				LPC_SC->PCLKSEL1 	&= ~(3 << 18);
-				LPC_SC->PCLKSEL1 	|=  (1 << 18);
-				LPC_PINCON->PINSEL0 &= ~(0xF << 0);
-				LPC_PINCON->PINSEL0 |=  (0xA << 0);	// Set pins as 10 10
-				LPC_UART3->LCR 		 =  (1 << 7);
-				LPC_UART3->DLM 		 = 0;
-				LPC_UART3->DLL 		 = sys_get_cpu_clock() / (16 * baud_rate);
-				LPC_UART3->LCR 		 = 3;
-				break;
+		if ( ((LPC_UART_TypeDef *)UartPtr)->LSR & LSR_OE_BIT )  {
+			printf("[UartErrorTask] Overrun!\n");
 		}
 
-		printf("Uart %i initialized.\n", port);
-	}
-
-	void uart_putchar(byte_t c)
-	{
-		switch (Port)
-		{
-			case UART_PORT0:
-					LPC_UART0->THR = c;
-					while ( !(LPC_UART0->LSR & (1 << 5)) );
-					break;
-
-			case UART_PORT1:
-					LPC_UART1->THR = c;
-					while ( !(LPC_UART1->LSR & (1 << 5)) );
-					break;
-
-			case UART_PORT2:
-					LPC_UART2->THR = c;
-					while ( !(LPC_UART2->LSR & (1 << 5)) );
-					break;
-
-			case UART_PORT3:
-					LPC_UART3->THR = c;
-					while ( !(LPC_UART3->LSR & (1 << 5)) );
-					break;
-		}
-	}
-
-	byte_t uart_getchar()
-	{
-		switch (Port)
-		{
-			case UART_PORT0:
-				 while ( !(LPC_UART0->LSR & (1<<0)) );
-				 return LPC_UART0->RBR;
-
-			case UART_PORT1:
-				 while ( !(LPC_UART1->LSR & (1<<0)) );
-				 return LPC_UART1->RBR;
-
-			case UART_PORT2:
-				 while ( !(LPC_UART2->LSR & (1<<0)) );
-				 return LPC_UART2->RBR;
-
-			case UART_PORT3:
-				 while ( !(LPC_UART3->LSR & (1<<0)) );
-				 return LPC_UART3->RBR;
+		if ( ((LPC_UART_TypeDef *)UartPtr)->LSR & LSR_PE_BIT )  {
+			printf("[UartErrorTask] Parity Error!\n");
 		}
 
-		// Should not reach
-		return (byte_t)NULL;
+		if ( ((LPC_UART_TypeDef *)UartPtr)->LSR & LSR_FE_BIT)   {
+			printf("[UartErrorTask] Framing Error!\n");
+		}
+
+		if ( ((LPC_UART_TypeDef *)UartPtr)->LSR & LSR_BI_BIT)   {
+			printf("[UartErrorTask] Break interrupt!\n");
+		}
+
+		if ( ((LPC_UART_TypeDef *)UartPtr)->LSR & LSR_RXFE_BIT) {
+			printf("[UartErrorTask] RBR Error!\n");
+		}
+
+		vTaskDelay(10);
 	}
+}
 
-private:
-
-	uart_port_t Port;
-};
-
-
-////////////////////////////////////////////////////////////////////////////
-
-
-class UartSendTask : public UartTask
+UartTask::UartTask(uint8_t priority, uart_port_t port) : 
+								scheduler_task("UartTask", 2048, priority),
+								Uart(port),
+								B0(BUTTON0),
+								B1(BUTTON1),
+								B2(BUTTON2)
 {
-public:
+	// Initialize with default baud rate
+	Init();
+	State = TRANSMITTING;
+	Buffer = new byte_t[BUFFER_SIZE];
 
-	UartSendTask(uint8_t priority, uart_port_t port) : UartTask(priority, port)
-	{
-		Port = port;
-		msg  = MESSAGE;
-		uart_init(Port, BAUDRATE);		// TX: P0.10(SDA2)		RX: P0.11(SCL2)
-	}
+	// Create a monitoring task, passing handle to uart register
+	xTaskCreate(&UartErrorTask, "UartErrorTask", 2048, (void *)&UartPtr, 5, NULL);
+}
 
-
-	bool run(void *p)
-	{
-		printf("Sending message...\n");
-
-		int l = msg.length();
-
-		for (int i=0; i<l; i++) {
-			uart_putchar(msg[i]);
-			vTaskDelay(10);
-		}
-
-		vTaskDelay(2000);
-		return true;
-	}
-
-private:
-
-	std::string 	msg;
-	uart_port_t 	Port;
-};
-
-
-////////////////////////////////////////////////////////////////////////////
-
-
-class UartEchoTask : public UartTask
+UartTask::~UartTask()
 {
-public:
+	delete [] Buffer;
+}
 
-	UartEchoTask(uint8_t priority, uart_port_t port) : UartTask(priority, port)
-	{
-		Port = port;
-		msg  = "";
-		uart_init(Port, BAUDRATE);		// TX: P0.0		RX:	P0.1
+bool UartTask::run(void *p)
+{
+	// Check for state change
+	if ( B0.IsPressed() ) {
+		State = TRANSMITTING;
+	}
+	else if ( B1.IsPressed() ) {
+		State = RECEIVING;
 	}
 
-
-	bool run(void *p)
+	// Transmit or receive
+	switch ( State )
 	{
-		while (msg != MESSAGE) {
-			msg += uart_getchar();
-		}
+		case TRANSMITTING:
+			if ( B2.IsPressed() ) {
+				SendString(UART_MESSAGE, strlen(UART_MESSAGE));					
+			}
+			break;
 
-		printf("Received message: %s\n", msg.c_str());
-		msg = "";
+		case RECEIVING:
+			if ( RxAvailable() ) {
+				size_t rx_size = 0;
+				rx_size = ReceiveString(Buffer, BUFFER_SIZE);
+				
+				// Make sure null terminated string
+				if (rx_size < BUFFER_SIZE) {
+					Buffer[rx_size] = '\0';
+				}
+				else {
+					Buffer[BUFFER_SIZE-1] = '\0';
+				}
 
-		return true;
+				printf("Received: %s\n", Buffer);
+			}
+			break;
 	}
 
-private:
+	vTaskDelay(100);
 
-	std::string 	msg;
-	uart_port_t 	Port;
-};
-
-
-////////////////////////////////////////////////////////////////////////////
-
-
-	/*
-	 *  UART INIT
-	 * 	1. PCONP	= Peripheral Power Control, reset and initialize
-	 * 	2. PCLKSEL 	= Peripheral Clock Selection, reset, then set as 01 to say PCLK = CCLK/1
-	 * 	3. PINSEL0	= Pin function select register, reset, then set 01 01 for UART012 and 10 10 for UART3
-	 * 	4. LCR		= Line Control Register, set bit 7 to enable access to divisor latches
-	 * 	5. DLM		= Divisor Latch MSB Register, Table 274,
-	 * 	6. DLL 		= Divisor Latch LSB Register, Table 275,
-	 * 	7. LCR		= Set format of payload to be 8-bit, 1 stop bit, no parity, no break, no divisor latch
-	 */
-
-	/*
-	 *  PUTCHAR
-	 *  1. Send char to THR (Transmitter Holding Register), which is the top byte of the TX FIFO
-	 *  2. Wait for THRE (LSR bit 5) to be empty to signify transmission is finished
-	 * 		otherwise might overwrite
-	 */
-
-	/*
-	 *  GETCHAR
-	 *  1. Wait for char to appear in RX FIFO, waits for bit 0 to be 1, which means not empty
-	 *  2. Return char from RBR which is the next received char
-	 */
-
-
-
+	return true;
+}

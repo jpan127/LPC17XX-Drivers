@@ -1,6 +1,6 @@
 #include "tasks.hpp" 									// terminalTask
 #include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
-#include "L5_Application/labs/UartTask.cpp"				// Lab2
+#include "L5_Application/labs/UartTask.hpp"				// Lab2
 #include "L5_Application/labs/SpiTask.cpp"				// Lab3
 // #include "interrupt.hpp"				// Lab4
 // #include ".hpp"							// Lab5
@@ -14,7 +14,7 @@
 int main(void)
 {
 	/******************************************************************************************************/
-	/* Lab 1 : GPIO : DONE */
+	/* Lab 1 : GPIO : VERIFIED */
 	printf("Starting Lab 1...\n");
 	scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
 
