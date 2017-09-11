@@ -3,7 +3,10 @@
 Gpio::Gpio(gpio_port_t port, gpio_pin_t pin, gpio_mode_t mode)
 {
 	// Loose check to see if pin number is out of range
-	assert(pin <= 31);
+	if (pin > 31) {
+		printf("Invalid Pin: %i\n", pin);
+		assert(pin <= 31);
+	}
 
 	// Save port and pin internally
 	Port = port;

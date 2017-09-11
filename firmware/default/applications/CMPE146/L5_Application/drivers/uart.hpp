@@ -3,12 +3,14 @@
 #include <string>
 #include <cassert>
 #include <sys_config.h>
-#include "FreeRTOS.h"
+#include <FreeRTOS.h>
 #include <LPC17xx.h>
 #include <task.h>
+#include <semphr.h>
+#include <printf_lib.h>
 #include "L5_Application/drivers/utilities.hpp"
 
-#define DEFAULT_BAUDRATE (115200)
+#define DEFAULT_BAUDRATE (9600)
 // Line Status Register bits
 #define LSR_RDR_BIT     (1 << 0)    // Set when RX FIFO is not empty
 #define LSR_OE_BIT      (1 << 1)    // Overrun flag, means new data is lost
@@ -20,8 +22,24 @@
 #define LSR_RXFE_BIT    (1 << 7)    // RBR contains an error (framing, parity, break interrupt)
 
 
-typedef enum {UART_PORT0, UART_PORT2, UART_PORT3} uart_port_t;
+// Not using UART0 or UART1
+typedef enum {UART_PORT2, UART_PORT3} uart_port_t;
 
+// Global Variables
+extern SemaphoreHandle_t UartSem;
+extern byte_t RxByte;
+extern uint8_t RxRingBufferIndex;
+extern byte_t RxRingBuffer[128];
+
+extern "C"
+{
+    void UART2_IRQHandler();
+    void UART3_IRQHandler();
+}
+
+// UART0: TX: P0.2      RX: P0.3
+// UART2: TX: P0.10     RX: P0.11
+// UART3: TX: P0.0      RX: P0.1
 // Base class, don't use
 class Uart
 {
@@ -59,12 +77,9 @@ protected:
 
 
     // Member variables
-    uart_port_t     Port;
-    LPC_UART_TypeDef  *UartPtr;
-
-private:
-
-    // void*    GetUartPtr();
+    uart_port_t         Port;
+    LPC_UART_TypeDef    *UartPtr;
+    IRQn_Type           IRQPtr;
 };
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////

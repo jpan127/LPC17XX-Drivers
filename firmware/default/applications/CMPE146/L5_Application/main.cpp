@@ -2,10 +2,10 @@
 #include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
 #include "L5_Application/labs/UartTask.hpp"				// Lab2
 #include "L5_Application/labs/SpiTask.cpp"				// Lab3
-// #include "interrupt.hpp"				// Lab4
-// #include ".hpp"							// Lab5
-// #include "orientation.cpp"				// Lab6
-// #include "producer_consumer.cpp"		// Lab7
+// #include "L5_Application/labs/interrupt.hpp"			// Lab4
+// #include "L5_Application/labs/.hpp"						// Lab5
+// #include "L5_Application/labs/orientation.cpp"			// Lab6
+// #include "L5_Application/labs/producer_consumer.cpp"	// Lab7
 // #include "infrared.cpp"
 // #include "bluetooth.cpp"
 // #include "motor.hpp"
@@ -15,14 +15,14 @@ int main(void)
 {
 	/******************************************************************************************************/
 	/* Lab 1 : GPIO : VERIFIED */
-	printf("Starting Lab 1...\n");
-	scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
+	// printf("Starting Lab 1...\n");
+	// scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
 
 	/******************************************************************************************************/
 
-	/* Lab 2 : UART : DONE */
-	// scheduler_add_task(new UartSendTask(PRIORITY_LOW, UART_PORT2));
-	// scheduler_add_task(new UartEchoTask(PRIORITY_LOW, UART_PORT3));
+	/* Lab 2 : UART : VERIFIED */
+	printf("Starting Lab 2...\n");
+	scheduler_add_task(new UartTask(PRIORITY_MEDIUM, UART_PORT3));
 
 	/******************************************************************************************************/
 

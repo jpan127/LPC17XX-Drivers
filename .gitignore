@@ -2,12 +2,10 @@ firmware/*
 !firmware/default/
 firmware/default/bin/*
 firmware/default/obj/*
-firmware/default/applications/*
 !firmware/default/applications/HelloWorld
 !firmware/default/applications/FreeRTOS
 !firmware/default/applications/Telemetry
 
-cmpe146
 **/.gdb_history
 **/.DS_Store
 **/flash.txt

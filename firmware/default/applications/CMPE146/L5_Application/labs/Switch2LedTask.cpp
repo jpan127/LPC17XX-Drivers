@@ -15,8 +15,8 @@ public:
 
 	Switch2LedTask(uint8_t priority) : 
 										scheduler_task("Switch2LedTask", 2048, priority),
-										B0(BUTTON0), 
-										B1(BUTTON1), 
+										B0(), 
+										B1(), 
 										Led(LED_PORT, LED_PIN)
 	{
 		printf("[Switch2LedTask] Pins are set up.\n");
@@ -45,7 +45,7 @@ public:
 
 private:
 
-	Button	 	B0;
-	Button	 	B1;
+	Button0 	B0;
+	Button1 	B1;
 	GpioOutput 	Led;
 };

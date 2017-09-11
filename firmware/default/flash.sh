@@ -36,8 +36,8 @@ do
             shift
         ;;
         --port)
-            # If string, not null
-            if [[ ! -z "$2" ]] && [[ "$2" =~ ^[a-zA-Z0-9]+ ]]
+            # If string, not null, and follows format /dev/ttyUSB<N>
+            if [[ ! -z "$2" ]] && [[ "$2" =~ ^\/dev\/ttyUSB[0-9] ]]
             then
                 PORT="$2"
             else
@@ -56,7 +56,16 @@ do
 done
 
 # Flash first
-./hyperload.py /dev/ttyUSB0 bin/$PROJECT/$PROJECT.hex
+echo "-----------------------------------------------------------------------"
+echo "Launching hyperload..."
+echo "-----------------------------------------------------------------------"
+./hyperload.py $PORT bin/$PROJECT/$PROJECT.hex
+echo "Exited hyperload."
 
 # Open terminal
-gtkterm -p /dev/ttyUSB0 -s 38400
+echo "-----------------------------------------------------------------------"
+echo "Launching gtkterm $PORT baud: 38400"
+echo "-----------------------------------------------------------------------"
+gtkterm -p $PORT -s 38400
+echo "Exited gtkterm."
+echo "-----------------------------------------------------------------------"

@@ -2,27 +2,71 @@
 #include <stdio.h>
 #include "L5_Application/drivers/gpio_input.hpp"
 
-typedef enum {BUTTON0, BUTTON1, BUTTON2, BUTTON3} button_t;
+typedef enum 
+{
+    BUTTON0 = 9,
+    BUTTON1 = 10,
+    BUTTON2 = 14,
+    BUTTON3 = 15
+} button_t;
 
-#define B0_PIN (9)
-#define B1_PIN (10)
-#define B2_PIN (14)
-#define B3_PIN (15)
-
+// Base class
 class Button : public GpioInput
 {
 public:
 
-	// Constructor
-	Button(button_t button);
-
 	// Returns true if pressed, and if pressed blocks/debounces until unpressed
 	bool IsPressed();
 
-private:
+protected:
 
+    // Constructor
+    Button(button_t pin);
+
+private:
+    
 	// Waits for pin to go low
 	void Debounce();
-	
-	gpio_pin_t 	Pin;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Button0 : public Button
+{
+public:
+
+    Button0() : Button(BUTTON0)
+    {
+        printf("Button 0 initialized.\n");
+    }
+};
+
+class Button1 : public Button
+{
+public:
+
+    Button1() : Button(BUTTON1)
+    {
+        printf("Button 1 initialized.\n");
+    }
+};
+
+class Button2 : public Button
+{
+public:
+
+    Button2() : Button(BUTTON2)
+    {
+        printf("Button 2 initialized.\n");
+    }
+};
+
+class Button3 : public Button
+{
+public:
+
+    Button3() : Button(BUTTON3)
+    {
+        printf("Button 3 initialized.\n");
+    }
 };

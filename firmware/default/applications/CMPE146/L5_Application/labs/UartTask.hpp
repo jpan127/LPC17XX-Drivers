@@ -24,9 +24,9 @@ public:
 
 private:
 
-    Button          B0;         // Set state to TRANSMITTING
-    Button          B1;         // Set state to RECEIVING
-    Button          B2;         // Send message in TRANSMITTING state
-    uart_state_t    State;
-    byte_t          *Buffer;
+    Button0         B0;         // Set state to TRANSMITTING
+    Button1         B1;         // Set state to RECEIVING
+    Button2         B2;         // Send message in TRANSMITTING state
+    uart_state_t    State;      // State
+    byte_t          *Buffer;    // RX Buffer
 };
