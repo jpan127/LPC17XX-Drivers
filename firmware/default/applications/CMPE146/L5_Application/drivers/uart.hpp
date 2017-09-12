@@ -7,10 +7,23 @@
 #include <LPC17xx.h>
 #include <task.h>
 #include <semphr.h>
+#include <queue.h>
 #include <printf_lib.h>
 #include "L5_Application/drivers/utilities.hpp"
+#include "L0_LowLevel/source/lpc_peripherals.h"
 
 #define DEFAULT_BAUDRATE (9600)
+// Interrupt Enable Bits
+#define IER_RBR_BIT     (1 << 0)    // RBR interrupt enable
+#define IER_THRE_BIT    (1 << 1)    // THRE interrupt enable
+#define IER_RX_LSR_BIT  (1 << 2)    // RX line status interrupt enable
+// Interrupt Status Bits
+#define IIR_RX_LSR_BIT  (0x3 << 1)  // RX line status error
+#define IIR_RXREADY_BIT (1   << 2)  // RX data available
+#define IIR_TIO_BIT     (0x3 << 2)  // Character time out indication
+#define IIR_THRE_BIT    (1   << 1)  // THRE
+// LCR Divisor Latch Access Bit
+#define LCR_DLAB_BIT    (1 << 7)    // Disable before configuration
 // Line Status Register bits
 #define LSR_RDR_BIT     (1 << 0)    // Set when RX FIFO is not empty
 #define LSR_OE_BIT      (1 << 1)    // Overrun flag, means new data is lost
@@ -18,18 +31,16 @@
 #define LSR_FE_BIT      (1 << 3)    // Framing error, incorrect stop bit, unsynchronized
 #define LSR_BI_BIT      (1 << 4)    // Break interrupt
 #define LSR_THRE_BIT    (1 << 5)    // Transmit holding register empty
-#define LSR_TEMT_BIT    (1 << 6)    // Both THR and TSR are empty
+#define LSR_TEMT_BIT    (1 << 6)    // Both THR and TSR (Transmit Shift Register) are empty
 #define LSR_RXFE_BIT    (1 << 7)    // RBR contains an error (framing, parity, break interrupt)
 
 
 // Not using UART0 or UART1
-typedef enum {UART_PORT2, UART_PORT3} uart_port_t;
+typedef enum { UART_PORT2, UART_PORT3 } uart_port_t;
+typedef enum { POLLING, INTERRUPT }     uart_mode_t;
 
 // Global Variables
 extern SemaphoreHandle_t UartSem;
-extern byte_t RxByte;
-extern uint8_t RxRingBufferIndex;
-extern byte_t RxRingBuffer[128];
 
 extern "C"
 {
@@ -61,7 +72,7 @@ protected:
     void    SendString(const char *buffer, size_t buffer_size);
 
     // Send byte
-    void    SendByte(byte_t byte);
+    bool    SendByte(byte_t byte);
 
     // Checks if anything waiting in RX buffer
     bool    RxAvailable();
@@ -73,7 +84,7 @@ protected:
     size_t  ReceiveString(byte_t *buffer, size_t buffer_size);
 
     // Receive byte
-    byte_t  ReceiveByte();
+    bool    ReceiveByte(byte_t *byte);
 
 
     // Member variables

@@ -21,6 +21,7 @@ THREADS="-j1"
 ENTITY_NAME=DBG
 DEBUG=0
 SILENT="-s"
+CLEAN=0
 
 ### if first argument is spotless, make spotless
 if [ "$1" == "spotless" ]
@@ -76,6 +77,9 @@ do
 			HelpMenu
 			exit 0
 		;;
+		-c|--clean)
+			CLEAN=1
+		;;
 		*)
 		        # unknown option
 		;;
@@ -105,5 +109,9 @@ else
 	exit 0
 fi
 
+if [ $CLEAN == 1 ]
+then
+	make clean
+fi
 ### Make target
 make $SILENT PROJ=$APPLICATION ENTITY=$ENTITY_NAME $THREADS DEBUG=$DEBUG

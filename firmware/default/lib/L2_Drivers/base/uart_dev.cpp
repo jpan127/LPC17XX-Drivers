@@ -25,6 +25,7 @@
 #include "LPC17xx.h"
 #include "utilities.h"      // system_get_timer_ms();
 #include "lpc_sys.h"
+#include <printf_lib.h>
 
 
 
@@ -156,7 +157,7 @@ void UartDev::handleInterrupt()
 
             case dataAvailable:
             case dataTimeout:
-            {
+            {                
                 mLastActivityTime = xTaskGetTickCountFromISR();
                 /**
                  * While receive Hardware FIFO not empty, keep queuing the data.

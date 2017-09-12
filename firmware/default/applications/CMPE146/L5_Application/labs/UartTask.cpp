@@ -1,12 +1,14 @@
 #include "L5_Application/labs/UartTask.hpp"
 #include <event_groups.h>
+#include <uart3.hpp>
 
 // Global variables
 SemaphoreHandle_t UartSem;
 
 // Transmitting message
-const char *UART_MESSAGE  = "UART IS THE BEST PROTOCOL!\n";
-const char *UART_MESSAGE2 = "UART IS THE WORST PROTOCOL!\n";
+const char *UART_MESSAGE  	= "UART IS THE BEST PROTOCOL!\n";
+const char *UART_MESSAGE2 	= "UART IS THE WORST PROTOCOL!\n";
+const char *ACK				= "ACK!\n";
 
 // Uart error monitor task
 void UartErrorTask(void *UartPtr)
@@ -74,8 +76,11 @@ UartTask::UartTask(uint8_t priority, uart_port_t port) :
 								scheduler_task("UartTask", 8196, priority),
 								Uart(port)
 {
+	printf("\n----------------------------------------------\n");
 	// Initialize with default baud rate
 	Init();
+	// Uart3::getInstance().init(DEFAULT_BAUDRATE);
+
 	// Default state is transmitting
 	State = TRANSMITTING;
 	// Allocate buffer for RX
@@ -97,11 +102,11 @@ bool UartTask::run(void *p)
 	static bool happy = true;
 
 	// Check for state change
-	if ( Button0::getInstance().IsPressed() ) {
+	if ( Button0::getInstance().IsPressed() && State != TRANSMITTING ) {
 		printf("State Change: TRANSMITTING\n");
 		State = TRANSMITTING;
 	}
-	else if ( Button1::getInstance().IsPressed() ) {
+	else if ( Button1::getInstance().IsPressed() && State != RECEIVING ) {
 		printf("State Change: RECEIVING\n");
 		State = RECEIVING;
 	}
@@ -110,6 +115,7 @@ bool UartTask::run(void *p)
 	switch ( State )
 	{
 		case TRANSMITTING:
+
 			if ( Button2::getInstance().IsPressed() ) {
 				if (happy) {
 					SendString(UART_MESSAGE, strlen(UART_MESSAGE));
@@ -121,26 +127,24 @@ bool UartTask::run(void *p)
 				}
 				happy = !happy;
 			}
+
 			break;
 
 		case RECEIVING:
 
 			// If interrupt not enabled then simply read RBR
 			if ( !(UartPtr->IER & (1 << 0)) ) {
-				while ( RxAvailable() ) {
-					printf("%c", ReceiveByte());
-				}
+				byte_t byte;
+				while ( !ReceiveByte(&byte) );
+				printf("%c", byte);
 			}
 
-			// If interrupt enabled then take semaphore + block
-			printf("[UartTask] Taking UartSem...\n");
-			if ( xSemaphoreTake( UartSem, portMAX_DELAY ) == pdTRUE) {
-				for (int i=0; i<RxRingBufferIndex; i++) {
-					printf("%c", RxRingBuffer[i]);
-				}
-				printf("\n");
-				// Reset ringbuffer
-				RxRingBufferIndex = 0;
+			// If interrupt enabled then block
+			else {
+				byte_t byte;
+				while ( !RxAvailable() );
+				ReceiveString(Buffer, BUFFER_SIZE);
+				printf("%s", Buffer);
 			}
 		
 			break;
