@@ -9,20 +9,21 @@
 // #include "infrared.cpp"
 // #include "bluetooth.cpp"
 // #include "motor.hpp"
+#include "L5_Application/drivers/led.hpp"
 
 
 int main(void)
 {
 	/******************************************************************************************************/
 	/* Lab 1 : GPIO : VERIFIED */
-	// printf("Starting Lab 1...\n");
-	// scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
+	printf("Starting Lab 1...\n");
+	scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
 
 	/******************************************************************************************************/
 
 	/* Lab 2 : UART : VERIFIED */
-	printf("Starting Lab 2...\n");
-	scheduler_add_task(new UartTask(PRIORITY_MEDIUM, UART_PORT3));
+	// printf("Starting Lab 2...\n");
+	// scheduler_add_task(new UartTask(PRIORITY_MEDIUM, UART_PORT3));
 
 	/******************************************************************************************************/
 

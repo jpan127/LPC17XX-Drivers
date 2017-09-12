@@ -1,5 +1,6 @@
 #pragma once
 #include <stdio.h>
+#include <singleton_template.hpp>
 #include "L5_Application/drivers/gpio_input.hpp"
 
 typedef enum 
@@ -31,42 +32,50 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Button0 : public Button
+class Button0 : public Button, public SingletonTemplate <Button0>
 {
-public:
+private:
 
     Button0() : Button(BUTTON0)
     {
         printf("Button 0 initialized.\n");
     }
+
+    friend class SingletonTemplate <Button0>;
 };
 
-class Button1 : public Button
+class Button1 : public Button, public SingletonTemplate <Button1>
 {
-public:
+private:
 
     Button1() : Button(BUTTON1)
     {
         printf("Button 1 initialized.\n");
     }
+
+    friend class SingletonTemplate <Button1>;
 };
 
-class Button2 : public Button
+class Button2 : public Button, public SingletonTemplate <Button2>
 {
-public:
+private:
 
     Button2() : Button(BUTTON2)
     {
         printf("Button 2 initialized.\n");
     }
+
+    friend class SingletonTemplate <Button2>;
 };
 
-class Button3 : public Button
+class Button3 : public Button, public SingletonTemplate <Button3>
 {
-public:
+private:
 
     Button3() : Button(BUTTON3)
     {
         printf("Button 3 initialized.\n");
     }
+
+    friend class SingletonTemplate <Button3>;
 };

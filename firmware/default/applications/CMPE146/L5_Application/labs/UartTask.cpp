@@ -72,10 +72,7 @@ void UartErrorTask(void *UartPtr)
 
 UartTask::UartTask(uint8_t priority, uart_port_t port) : 
 								scheduler_task("UartTask", 8196, priority),
-								Uart(port),
-								B0(),
-								B1(),
-								B2()
+								Uart(port)
 {
 	// Initialize with default baud rate
 	Init();
@@ -100,11 +97,11 @@ bool UartTask::run(void *p)
 	static bool happy = true;
 
 	// Check for state change
-	if ( B0.IsPressed() ) {
+	if ( Button0::getInstance().IsPressed() ) {
 		printf("State Change: TRANSMITTING\n");
 		State = TRANSMITTING;
 	}
-	else if ( B1.IsPressed() ) {
+	else if ( Button1::getInstance().IsPressed() ) {
 		printf("State Change: RECEIVING\n");
 		State = RECEIVING;
 	}
@@ -113,7 +110,7 @@ bool UartTask::run(void *p)
 	switch ( State )
 	{
 		case TRANSMITTING:
-			if ( B2.IsPressed() ) {
+			if ( Button2::getInstance().IsPressed() ) {
 				if (happy) {
 					SendString(UART_MESSAGE, strlen(UART_MESSAGE));
 					printf("Transmitted: %s", UART_MESSAGE);

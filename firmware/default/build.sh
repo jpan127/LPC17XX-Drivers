@@ -106,5 +106,4 @@ else
 fi
 
 ### Make target
-make clean
 make $SILENT PROJ=$APPLICATION ENTITY=$ENTITY_NAME $THREADS DEBUG=$DEBUG
