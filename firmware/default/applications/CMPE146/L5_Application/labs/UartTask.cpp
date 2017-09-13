@@ -79,7 +79,6 @@ UartTask::UartTask(uint8_t priority, uart_port_t port) :
 	printf("\n----------------------------------------------\n");
 	// Initialize with default baud rate
 	Init();
-	// Uart3::getInstance().init(DEFAULT_BAUDRATE);
 
 	// Default state is transmitting
 	State = TRANSMITTING;

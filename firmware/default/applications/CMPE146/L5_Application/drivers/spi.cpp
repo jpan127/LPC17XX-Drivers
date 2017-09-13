@@ -17,67 +17,95 @@
 // 3. Return char from DR
 //
 
-SpiBase::SpiBase(spi_port_t port)
+SpiBase::SpiBase(spi_port_t port, spi_mode_t mode)
 {
 	Port = port;
 
-	Initialize();
+	switch (Port)
+	{
+		case SPI_PORT0: SspPtr = LPC_SSP0; break;
+		case SPI_PORT1: SspPtr = LPC_SSP1; break;
+	}
+
+	Initialize(mode);
 }
 
-void SpiBase::Initialize()
+void SpiBase::Initialize(pclk_divisor_t divisor, spi_mode_t mode)
 {
+	uint8_t divisor_setting = 1;
+	switch (divisor)
+	{
+		case PCLK_DIV4: divisor_setting = 0x0; break;
+		case PCLK_DIV2: divisor_setting = 0x2; break;
+		case PCLK_DIV1: divisor_setting = 0x1; break;
+		case PCLK_DIV8: divisor_setting = 0x3; break;
+	}
+
 	switch (Port)
 	{
 		case SPI_PORT0:
+
 			LPC_SC->PCONP 	 	|=  (1 << 21);
 			LPC_SC->PCLKSEL1 	&= ~(3 << 10);
-			LPC_SC->PCLKSEL1 	|=  (1 << 10);
-			LPC_PINCON->PINSEL0 &= ~(3 << 30); 					// SCK0 is in PINSEL0
-			LPC_PINCON->PINSEL1 &= ~( (3 << 2) | (3 << 4) );	// MISO0 MOSI0 is in PINSEL1
+			LPC_SC->PCLKSEL1 	|=  (divisor_setting << 10);
+			// SCK0 is in PINSEL0
+			// MISO0 MOSI0 is in PINSEL1
+			LPC_PINCON->PINSEL0 &= ~(3 << 30);
+			LPC_PINCON->PINSEL1 &= ~( (3 << 0) | (3 << 2) | (3 << 4) );	
 			LPC_PINCON->PINSEL0 |=  (2 << 30);
-			LPC_PINCON->PINSEL1 |=  ( (2 << 2) | (2 << 4) );
-			LPC_SSP0->CR0 		 = 7;
-			LPC_SSP0->CR1 		 = (1 << 1);
-			LPC_SSP0->CPSR 		 = 8;
+			LPC_PINCON->PINSEL1 |=  ( (2 << 0) | (2 << 2) | (2 << 4) );
 			break;
 
 		case SPI_PORT1:
+
 			LPC_SC->PCONP 	 	|=  (1 << 10);
 			LPC_SC->PCLKSEL0 	&= ~(3 << 20);
-			LPC_SC->PCLKSEL0 	|=  (1 << 20);
+			LPC_SC->PCLKSEL0 	|=  (divisor_setting << 20);
 			LPC_PINCON->PINSEL0 &= ~( (3 << 12) | (3 << 14) | (3 << 16) | (3 << 18) );
-			LPC_PINCON->PINSEL0 |=  ( (0 << 12) | (2 << 14) | (2 << 16) | (2 << 18) );
-			LPC_SSP1->CR0 		 = 7;
-			LPC_SSP1->CR1 		 = (1 << 1);
-			LPC_SSP1->CPSR 		 = 8;							// clock prescale register, clk/8
+			LPC_PINCON->PINSEL0 |=  ( (2 << 12) | (2 << 14) | (2 << 16) | (2 << 18) );
 			break;
 	}
+
+	// 8 bit data transfer, spi frame format, 
+	SspPtr->CR0 	= 0x7;
+	SspPtr->CR1 	= (mode == SPI_MASTER) ? (1 << 1) : ( (1 << 1) | (1 << 2) );
+	// clock prescale register, clk/8
+	SspPtr->CPSR	= 0x8;
 
 	printf("SPI %i initialized.\n", Port);
 }
 
 byte_t SpiBase::ExchangeByte(byte_t byte)
 {
-	switch (Port)
-	{
-		case SPI_PORT0:
-			LPC_SSP0->DR = byte;
-			while (LPC_SSP0->SR & (1 << 4));
-			return LPC_SSP0->DR;
+	// Put in a byte
+	SspPtr->DR = byte;
+	// Wait until SSP not busy
+	while ( Busy() );
+	// Return exchanged byte
+	return SspPtr->DR;
+}
 
-		case SPI_PORT1:
-			LPC_SSP1->DR = byte;
-			while (LPC_SSP1->SR & (1 << 4));	// wait for bit to not be BUSY
-			return LPC_SSP1->DR;
-	}
+bool SpiBase::Busy()
+{
+	// Returns true if busy
+	return ( SspPtr->SR & SPI_STATUS_BSY );
+}
 
-	// Should never reach
-	return (byte_t)NULL;
+bool SpiBase::TxAvailable()
+{
+	// Returns true if not full
+	return ( SspPtr->SR & SPI_STATUS_TNF );
+}
+
+bool SpiBase::RxAvailable()
+{
+	// Returns true if not full
+	return ( !(SspPtr->SR & SPI_STATUS_RFF) );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-AT45DB161::AT45DB161() : SpiBase(SPI_PORT1)
+AT45DB161::AT45DB161() : SpiBase(SPI_PORT1, SPI_MASTER)
 {
 	// Set flash_cs as output
 	LPC_GPIO0->FIODIR |= (1 << 6);
@@ -251,13 +279,11 @@ void AT45DB161::SetCSHigh()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-Spi::Spi() : SpiBase(SPI_PORT0)
+Spi::Spi(spi_port_t port, spi_mode_t mode) : SpiBase(port, mode)
 {
-	// Set nordic_cs as output
-	LPC_GPIO0->FIODIR |= (1 << 16);
-	LPC_GPIO0->FIOSET |= (1 << 16);
-	// Set SW0 as input
-	LPC_GPIO1->FIODIR &= ~(1 << 9);
+	// // Set nordic_cs/SSEL0 as output
+	// LPC_GPIO0->FIODIR |= (1 << 16);
+	// LPC_GPIO0->FIOSET |= (1 << 16);
 }
 
 void Spi::SendByte(byte_t byte)
@@ -270,9 +296,16 @@ byte_t Spi::ReceiveByte()
 	return ExchangeByte(0x00);
 }
 
-void Spi::SendByteBlock(byte_t *block, int size)
+void Spi::SendString(byte_t *block, size_t size)
 {
-	for (int i=0; i<size; i++) {
+	for (size_t i=0; i<size; i++) {
 		SendByte(block[i]);
 	}
+}
+
+void Spi::SendString(const char *block, size_t size)
+{
+	for (size_t i=0; i<size; i++) {
+		SendByte(block[i]);
+	}	
 }
