@@ -21,30 +21,20 @@ class Gpio
 {
 public:
 
-	// Constructor: port + pin + mode
-	Gpio(gpio_port_t port, gpio_pin_t pin, gpio_mode_t mode);
-
-	// Sets value high or low
-	void SetValue(gpio_value_t value);
-
-	// Set high
-	void SetHigh();
-
-	// Set low
-	void SetLow();
-
+	// Select GPIO PINSEL
+	void SelectGpioFunction(gpio_port_t port);
+	
 	// Check if high
 	bool IsHigh();
 
 	// Check if low
 	bool IsLow();
 
-private:
+protected:
 
-	// Get pointer to gpio register
-	LPC_GPIO_Typedef* GetPointer();
+	// Constructor
+	Gpio(gpio_port_t port, gpio_pin_t pin, gpio_mode_t mode);
 
-	LPC_GPIO_Typedef *GpioPtr;
-	gpio_pin_t 		Pin;
-	gpio_port_t 	Port;
+	LPC_GPIO_Typedef 	*GpioPtr;
+	gpio_pin_t 			Pin;
 };

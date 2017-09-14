@@ -10,4 +10,14 @@ public:
 	{
 		/* EMPTY */
 	}
+
+    // Sets value high or low
+    void SetValue(gpio_value_t value);
+
+    // Set high
+    void SetHigh();
+
+    // Set low
+    void SetLow();
+
 };

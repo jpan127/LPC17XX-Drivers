@@ -17,12 +17,12 @@ Led::Led(led_t led)
 
 void Led::SetLed()
 {
-	LPC_GPIO1->FIOSET |= (1 << Pin);
+	LPC_GPIO1->FIOCLR |= (1 << Pin);
 }
 
 void Led::ClearLed()
 {
-	LPC_GPIO1->FIOCLR |= (1 << Pin);
+	LPC_GPIO1->FIOSET |= (1 << Pin);
 }
 
 void Led::Blink(int itr)

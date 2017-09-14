@@ -8,26 +8,46 @@ Gpio::Gpio(gpio_port_t port, gpio_pin_t pin, gpio_mode_t mode)
 		assert(pin <= 31);
 	}
 
-	// Save port and pin internally
-	Port = port;
-	Pin  = pin;
+	// Save pin number
+	Pin = pin;
 
 	// Select GPIO functionality for specified pin
-	switch (Port)
+	SelectGpioFunction(port);
+
+	// Save pointer to GPIO base
+	switch (port)
+	{
+		case GPIO_PORT0: GpioPtr = LPC_GPIO0; break;
+		case GPIO_PORT1: GpioPtr = LPC_GPIO1; break;
+		case GPIO_PORT2: GpioPtr = LPC_GPIO2; break;
+		case GPIO_PORT3: GpioPtr = LPC_GPIO3; break;
+	}
+
+	// Set direction of pin
+	switch (mode)
+	{
+		case INPUT:  GpioPtr->FIODIR &= ~(1 << Pin); break;
+		case OUTPUT: GpioPtr->FIODIR |=  (1 << Pin); break;
+	}
+}
+
+void Gpio::SelectGpioFunction(gpio_port_t port)
+{
+	switch (port)
 	{
 		case GPIO_PORT0:
-			if (pin <= 15) 
+			if (Pin <= 15) 
 			{
-				LPC_PINCON->PINSEL0 &= ~(0x3 << (2*pin));
+				LPC_PINCON->PINSEL0 &= ~(0x3 << (2*Pin));
 			}
-			else if (pin <= 31) 
+			else if (Pin <= 31) 
 			{
-				LPC_PINCON->PINSEL1 &= ~(0x3 << (2*(pin - 16)));
+				LPC_PINCON->PINSEL1 &= ~(0x3 << (2*(Pin - 16)));
 			}
 			break;
 
 		case GPIO_PORT1:
-			if (pin <= 15) 
+			if (Pin <= 15) 
 			{
 				// Can't initialize reserved pins
 				bool reserved = false;
@@ -46,24 +66,24 @@ Gpio::Gpio(gpio_port_t port, gpio_pin_t pin, gpio_mode_t mode)
 
 				if (reserved) 
 				{
-					printf("Port: %i Pin: %i is reserved, cannot be used as GPIO.\n", port, pin);
+					printf("Port: %i Pin: %i is reserved, cannot be used as GPIO.\n", port, Pin);
 					return;
 				}
 				else 
 				{
-					LPC_PINCON->PINSEL2 &= ~(0x3 << (2*pin));
+					LPC_PINCON->PINSEL2 &= ~(0x3 << (2*Pin));
 				}
 			}
-			else if (pin <= 31)
+			else if (Pin <= 31)
 			{
-				LPC_PINCON->PINSEL3 &= ~(0x3 << (2*(pin - 16)));
+				LPC_PINCON->PINSEL3 &= ~(0x3 << (2*(Pin - 16)));
 			}
 			break;
 
 		case GPIO_PORT2:
-			if (pin <= 13)
+			if (Pin <= 13)
 			{
-				LPC_PINCON->PINSEL4 &= ~(0x3 << (2*pin));
+				LPC_PINCON->PINSEL4 &= ~(0x3 << (2*Pin));
 			}
 			break;
 
@@ -71,41 +91,6 @@ Gpio::Gpio(gpio_port_t port, gpio_pin_t pin, gpio_mode_t mode)
 			// Not handling
 			break;
 	}
-
-
-	switch (Port)
-	{
-		case GPIO_PORT0: GpioPtr = LPC_GPIO0; break;
-		case GPIO_PORT1: GpioPtr = LPC_GPIO1; break;
-		case GPIO_PORT2: GpioPtr = LPC_GPIO2; break;
-		case GPIO_PORT3: GpioPtr = LPC_GPIO3; break;
-	}
-
-	// Set direction of pin
-	switch (mode)
-	{
-		case INPUT:  GpioPtr->FIODIR &= ~(1 << Pin); break;
-		case OUTPUT: GpioPtr->FIODIR |=  (1 << Pin); break;
-	}
-}
-
-void Gpio::SetValue(gpio_value_t value)
-{
-	switch (value)
-	{
-		case HIGH: GpioPtr->FIOSET |= (1 << Pin); break;
-		case LOW:  GpioPtr->FIOCLR |= (1 << Pin); break;
-	}
-}
-
-void Gpio::SetHigh()
-{
-	SetValue(HIGH);
-}
-
-void Gpio::SetLow()
-{
-	SetValue(LOW);
 }
 
 bool Gpio::IsHigh()

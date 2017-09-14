@@ -46,7 +46,7 @@ private:
 	friend class SingletonTemplate <Led0>;
 };
 
-class Led1 : public Led, public SingletonTemplate <Led0>
+class Led1 : public Led, public SingletonTemplate <Led1>
 {
 private:
 
@@ -55,10 +55,10 @@ private:
 		printf("Initialized LED1.\n");
 	}
 
-	friend class SingletonTemplate <Led0>;
+	friend class SingletonTemplate <Led1>;
 };
 
-class Led2 : public Led, public SingletonTemplate <Led0>
+class Led2 : public Led, public SingletonTemplate <Led2>
 {
 private:
 
@@ -67,10 +67,10 @@ private:
 		printf("Initialized LED2.\n");
 	}
 
-	friend class SingletonTemplate <Led0>;
+	friend class SingletonTemplate <Led2>;
 };
 
-class Led3 : public Led, public SingletonTemplate <Led0>
+class Led3 : public Led, public SingletonTemplate <Led3>
 {
 private:
 
@@ -79,5 +79,5 @@ private:
 		printf("Initialized LED3.\n");
 	}
 
-	friend class SingletonTemplate <Led0>;
+	friend class SingletonTemplate <Led3>;
 };

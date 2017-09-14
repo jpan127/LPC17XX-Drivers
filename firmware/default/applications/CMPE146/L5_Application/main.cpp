@@ -2,7 +2,7 @@
 #include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
 #include "L5_Application/labs/UartTask.hpp"				// Lab2
 #include "L5_Application/labs/AT45QueryTask.cpp"		// Lab3
-// #include "L5_Application/labs/interrupt.hpp"			// Lab4
+#include "L5_Application/labs/GpioInterruptTask.hpp"	// Lab4
 // #include "L5_Application/labs/.hpp"						// Lab5
 // #include "L5_Application/labs/orientation.cpp"			// Lab6
 // #include "L5_Application/labs/producer_consumer.cpp"	// Lab7
@@ -27,7 +27,7 @@ int main(void)
 	/******************************************************************************************************/
 
 	/* Lab 3 : SPI : DONE (WORKING ON EXTRA CREDIT) */
-	scheduler_add_task(new AT45QueryTask(PRIORITY_LOW));
+	// scheduler_add_task(new AT45QueryTask(PRIORITY_LOW));
 
 	/******************************************************************************************************/
 
@@ -38,8 +38,8 @@ int main(void)
 	/******************************************************************************************************/
 
 	/* Lab 5 : INTERRUPTS : Not working but mostly complete */
-	// scheduler_add_task(new InterruptLab(PRIORITY_HIGH));
-	// scheduler_add_task(new sw0_callback());
+	scheduler_add_task(new GpioInterruptTask(PRIORITY_HIGH));
+	scheduler_add_task(new sw0_callback());
 	// scheduler_add_task(new sw1_callback());
 
 	/******************************************************************************************************/
