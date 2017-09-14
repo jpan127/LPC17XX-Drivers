@@ -17,7 +17,7 @@
 // 3. Return char from DR
 //
 
-SpiBase::SpiBase(spi_port_t port, spi_mode_t mode)
+SpiBase::SpiBase(spi_port_t port, spi_mode_t mode, pclk_divisor_t divisor)
 {
 	Port = port;
 
@@ -27,10 +27,10 @@ SpiBase::SpiBase(spi_port_t port, spi_mode_t mode)
 		case SPI_PORT1: SspPtr = LPC_SSP1; break;
 	}
 
-	Initialize(mode);
+	Initialize(mode, divisor);
 }
 
-void SpiBase::Initialize(pclk_divisor_t divisor, spi_mode_t mode)
+void SpiBase::Initialize(spi_mode_t mode, pclk_divisor_t divisor)
 {
 	uint8_t divisor_setting = 1;
 	switch (divisor)
@@ -68,21 +68,30 @@ void SpiBase::Initialize(pclk_divisor_t divisor, spi_mode_t mode)
 
 	// 8 bit data transfer, spi frame format, 
 	SspPtr->CR0 	= 0x7;
+	// Bit 1 is SSP enable, Bit 2 determines if master (value 0) or slave (value 1)
 	SspPtr->CR1 	= (mode == SPI_MASTER) ? (1 << 1) : ( (1 << 1) | (1 << 2) );
-	// clock prescale register, clk/8
-	SspPtr->CPSR	= 0x8;
+	// Clock prescale register
+	// In slave mode SSP clock rate should not exceed 1/12 of SSP pclk
+	SspPtr->CPSR	= 24;	// pclk/24
 
 	printf("SPI %i initialized.\n", Port);
 }
 
 byte_t SpiBase::ExchangeByte(byte_t byte)
 {
+	// Wait until TX FIFO is not full
+	while ( !TxAvailable() );
 	// Put in a byte
 	SspPtr->DR = byte;
 	// Wait until SSP not busy
 	while ( Busy() );
+
+	// Wait until RX FIFO not empty
+	while ( !RxAvailable() );
 	// Return exchanged byte
 	return SspPtr->DR;
+	// Wait until SSP not busy
+	while ( Busy() );
 }
 
 bool SpiBase::Busy()
@@ -99,30 +108,29 @@ bool SpiBase::TxAvailable()
 
 bool SpiBase::RxAvailable()
 {
-	// Returns true if not full
-	return ( !(SspPtr->SR & SPI_STATUS_RFF) );
+	// Returns true if not empty
+	return ( SspPtr->SR & SPI_STATUS_RNE );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-AT45DB161::AT45DB161() : SpiBase(SPI_PORT1, SPI_MASTER)
+AT45DB161::AT45DB161() : SpiBase(SPI_PORT1, SPI_MASTER), ChipSelect(GPIO_PORT0, 6)
 {
-	// Set flash_cs as output
-	LPC_GPIO0->FIODIR |= (1 << 6);
-	LPC_GPIO0->FIOSET |= (1 << 6);
-	// Set SW0 as input
-	LPC_GPIO1->FIODIR &= ~(1 << 9);
+	/* EMPTY */
 }
 
 void AT45DB161::ReadStatusRegister()
 {
 	SetCSLow();
 
+	puts("///////////////////////////////////////////////////////////////////////////////////");
+	printf("\n");
+
 	uint8_t c;
 	c = ExchangeByte(0xD7);
 	c = ExchangeByte(0x00);
 	
-	printf("Status Register Byte 1: "); print_bits(c);
+	printf("Status Register Byte 1: "); print_bits(c, 8); printf(" | 0x%02X\n", c);
 
 	if (c & (1<<0)) puts("[Bit 0][1] Device is configured for 'power of 2' binary page size (512 bytes).");
 	else 			puts("[Bit 0][0] Device is configured for standard DataFlash page size (528 bytes).");
@@ -142,7 +150,7 @@ void AT45DB161::ReadStatusRegister()
 
 	c = ExchangeByte(0x00);
 
-	printf("Status Register Byte 2: "); print_bits(c, 8);
+	printf("Status Register Byte 2: "); print_bits(c, 8); printf(" | 0x%02X\n", c);
 
 	if (c & (1<<0)) puts("[Bit 0][1] A sector is erase suspended.");
 	else 			puts("[Bit 0][0] No sectors are erase suspended.");
@@ -166,7 +174,7 @@ void AT45DB161::ReadStatusRegister()
 	if (c & (1<<7))	puts("[Bit 7][1] Device is ready.");
 	else			puts("[Bit 7][0] Device is busy with an internal operation.");
 
-	puts("///////////////////////////////////////////////////////////////////////////////////");
+	printf("\n");
 
 	SetCSHigh();
 }
@@ -176,20 +184,21 @@ void AT45DB161::ReadManufacturerID()
 	SetCSLow();
 
 	puts("///////////////////////////////////////////////////////////////////////////////////");
+	printf("\n");
 
 	byte_t c;
 	c = ExchangeByte(0x9F);
 
 	c = ExchangeByte(0x00);
-	printf("Manufacturer ID    : "); print_bits(c, 8); puts("");
+	printf("Manufacturer ID    : "); print_bits(c, 8); printf(" | 0x%02X\n", c);
 
 	c = ExchangeByte(0x00);
-	printf("Device ID (Byte 1) : "); print_bits(c, 8); puts("");
+	printf("Device ID (Byte 1) : "); print_bits(c, 8); printf(" | 0x%02X\n", c);
 
 	c = ExchangeByte(0x00);
-	printf("Device ID (Byte 2) : "); print_bits(c, 8); puts("");
+	printf("Device ID (Byte 2) : "); print_bits(c, 8); printf(" | 0x%02X\n", c);
 
-	puts("///////////////////////////////////////////////////////////////////////////////////");
+	printf("\n");
 
 	SetCSHigh();
 }
@@ -198,6 +207,9 @@ void AT45DB161::ReadSectorInfo()
 {
 	// Initialize the flash memory
 	flash_initialize();
+
+	puts("///////////////////////////////////////////////////////////////////////////////////");
+	printf("\n");
 
 	// Get sector count
 	DWORD sector_count;
@@ -213,6 +225,45 @@ void AT45DB161::ReadSectorInfo()
 	DWORD block_size;
 	flash_ioctl(GET_BLOCK_SIZE, &block_size);			// Get control information
 	printf("Block Size: %lu\n", block_size);			// unsigned long
+
+	printf("\n");
+}
+
+void AT45DB161::ContinuousArrayRead()
+{
+	SetCSLow();
+
+	ExchangeByte(0x03);	// Opcode for continuous array read for f(car2) frequencies
+
+	// First 12 bits [11:0] specify the page
+	// Last  10 bits [22:12] specify the starting byte address in the page
+	ExchangeByte(0x00);	// Address 1
+	ExchangeByte(0x00); // Address 2
+	ExchangeByte(0x00); // Address 3
+
+	char *buffer = ReadPage();
+	// Cast to struct
+	boot_sector_t *boot_sector = (boot_sector_t *)buffer;
+
+	// printf("bootstrap_address          : %s\n", boot_sector->bootstrap_address);
+	// printf("oem_name_and_version       : %s\n", boot_sector->oem_name_and_version);
+	// printf("bytes_per_sector           : %s\n", boot_sector->bytes_per_sector);
+	// printf("num_sectors_per_cluster    : %i\n", boot_sector->num_sectors_per_cluster);
+	// printf("num_reserved_sectors       : %s\n", boot_sector->num_reserved_sectors);
+	// printf("num_fat_copies             : %i\n", boot_sector->num_fat_copies);
+	// printf("num_root_directory_entries : %s\n", boot_sector->num_root_directory_entries);
+	// printf("num_total_sectors          : %s\n", boot_sector->num_total_sectors);
+	// printf("media_descriptor_type      : %i\n", boot_sector->media_descriptor_type);
+	// printf("num_sectors_per_fat        : %s\n", boot_sector->num_sectors_per_fat);
+	// printf("num_sectors_per_track      : %s\n", boot_sector->num_sectors_per_track);
+	// printf("num_heads                  : %s\n", boot_sector->num_heads);
+	// printf("num_hidden_sectors         : %s\n", boot_sector->num_hidden_sectors);
+	// printf("bootstrap                  : %s\n", boot_sector->bootstrap);
+	// printf("signature                  : %s\n", boot_sector->signature);
+
+	PrintPage((char *)boot_sector->bootstrap, 480);
+
+	SetCSHigh();
 }
 
 void AT45DB161::ReadSector(int sector, int pages)
@@ -237,7 +288,34 @@ void AT45DB161::ReadSector(int sector, int pages)
 			if (i%2 == 0 && i>0) std::cout << std::setw(2) << " ";
 			std::cout << std::hex << std::uppercase << static_cast<int>(page[i]);
 		}
-		printf("\n\n");
+	}
+
+	printf("\n");
+}
+
+char* AT45DB161::ReadPage()
+{
+	char *buffer = new char[512];
+
+	for (int i=0; i<512; i++) {
+		buffer[i] = ExchangeByte(DUMMY);
+	}
+
+	return buffer;
+}
+
+void AT45DB161::PrintPage(char *buffer, size_t size)
+{
+	for (int i=0; i<size; i++) {
+		// New line
+		if (i%16 == 0 && i>0) {
+			std::cout << std::endl;
+		}
+		// Space every 2 bytes
+		else if (i%2 == 0 && i>0) {
+			std::cout << " ";
+		}
+		std::cout << std::setw(5) << std::hex << std::uppercase << (int)buffer[i];
 	}
 }
 
@@ -245,45 +323,41 @@ void AT45DB161::ReadPage0()
 {
 	SetCSLow();
 
-	ExchangeByte(0xD2);
-	ExchangeByte(0x00);	// address byte 1
-	ExchangeByte(0x00);	// address byte 2
-	ExchangeByte(0x00); // address byte 3
-	ExchangeByte(0x00); // dummy   byte 1
-	ExchangeByte(0x00); // dummy   byte 2
-	ExchangeByte(0x00); // dummy   byte 3
-	ExchangeByte(0x00); // dummy   byte 4
+	ExchangeByte(0xD2);		// Read opcode
+	ExchangeByte(0x00);		// Address byte 1
+	ExchangeByte(0x00);		// Address byte 2
+	ExchangeByte(0x00); 	// Address byte 3
+	ExchangeByte(DUMMY); 	// Dummy   byte 1
+	ExchangeByte(DUMMY); 	// Dummy   byte 2
+	ExchangeByte(DUMMY); 	// Dummy   byte 3
+	ExchangeByte(DUMMY); 	// Dummy   byte 4
 
-	char c;
+	char *buffer = ReadPage();
+	PrintPage(buffer);
+	delete [] buffer;
 
-	for (int i=0; i<512; i++) {
-		c = ExchangeByte(0x00);
-		if (i%2 == 0 && i>0) std::cout << std::setw(4) << " ";
-		std::cout << std::hex << std::uppercase << static_cast<int>(c);
-	}
-
-	puts("");
+	printf("\n");
 
 	SetCSHigh();
 }
 
 void AT45DB161::SetCSLow()
 {
-	LPC_GPIO0->FIOCLR |= (1 << 6);
+	ChipSelect.SetLow();
 }
 
 void AT45DB161::SetCSHigh()
 {
-	LPC_GPIO0->FIOSET |= (1 << 6);
+	ChipSelect.SetHigh();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-Spi::Spi(spi_port_t port, spi_mode_t mode) : SpiBase(port, mode)
+Spi::Spi(spi_port_t port, spi_mode_t mode, gpio_port_t cs_port, gpio_pin_t cs_pin) : 
+														SpiBase(port, mode),
+														ChipSelect(cs_port, cs_pin)
 {
-	// // Set nordic_cs/SSEL0 as output
-	// LPC_GPIO0->FIODIR |= (1 << 16);
-	// LPC_GPIO0->FIOSET |= (1 << 16);
+	/* EMPTY */
 }
 
 void Spi::SendByte(byte_t byte)

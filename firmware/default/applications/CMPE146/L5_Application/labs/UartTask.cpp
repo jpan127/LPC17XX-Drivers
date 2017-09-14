@@ -72,11 +72,12 @@ void UartErrorTask(void *UartPtr)
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 UartTask::UartTask(uint8_t priority, uart_port_t port) : 
 								scheduler_task("UartTask", 8196, priority),
 								Uart(port)
 {
-	printf("\n----------------------------------------------\n");
 	// Initialize with default baud rate
 	Init();
 
@@ -140,7 +141,6 @@ bool UartTask::run(void *p)
 
 			// If interrupt enabled then block
 			else {
-				byte_t byte;
 				while ( !RxAvailable() );
 				ReceiveString(Buffer, BUFFER_SIZE);
 				printf("%s", Buffer);

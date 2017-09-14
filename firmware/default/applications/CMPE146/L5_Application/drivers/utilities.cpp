@@ -7,8 +7,7 @@ void print_bits(uint8_t c, uint8_t bits)
 		return;
 	}
 	for (int i=(bits-1); i>=0; i--) {
-		std::cout << (c & 1);
-		c >>= 1;
+		std::cout << ( (c & (1 << i)) ? (1) : (0) );
 	}
 }
 
@@ -19,8 +18,7 @@ void print_bits(uint16_t c, uint8_t bits)
 		return;
 	}
 	for (int i=(bits-1); i>=0; i--) {
-		std::cout << (c & 1);
-		c >>= 1;
+		std::cout << ( (c & (1 << i)) ? (1) : (0) );
 	}
 }
 
@@ -31,7 +29,6 @@ void print_bits(uint32_t c, uint8_t bits)
 		return;
 	}
 	for (int i=(bits-1); i>=0; i--) {
-		std::cout << (c & 1);
-		c >>= 1;
+		std::cout << ( (c & (1 << i)) ? (1) : (0) );
 	}
 }

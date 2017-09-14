@@ -1,7 +1,7 @@
 #include "tasks.hpp" 									// terminalTask
 #include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
 #include "L5_Application/labs/UartTask.hpp"				// Lab2
-#include "L5_Application/labs/SpiTask.cpp"				// Lab3
+#include "L5_Application/labs/AT45QueryTask.cpp"		// Lab3
 // #include "L5_Application/labs/interrupt.hpp"			// Lab4
 // #include "L5_Application/labs/.hpp"						// Lab5
 // #include "L5_Application/labs/orientation.cpp"			// Lab6
@@ -21,13 +21,13 @@ int main(void)
 	/******************************************************************************************************/
 
 	/* Lab 2 : UART : VERIFIED */
-	printf("Starting Lab 2...\n");
-	scheduler_add_task(new UartTask(PRIORITY_MEDIUM, UART_PORT));
+	// printf("Starting Lab 2...\n");
+	// scheduler_add_task(new UartTask(PRIORITY_MEDIUM, UART_PORT));
 
 	/******************************************************************************************************/
 
 	/* Lab 3 : SPI : DONE (WORKING ON EXTRA CREDIT) */
-	// scheduler_add_task(new spiSend_task(PRIORITY_LOW));
+	scheduler_add_task(new AT45QueryTask(PRIORITY_LOW));
 
 	/******************************************************************************************************/
 
