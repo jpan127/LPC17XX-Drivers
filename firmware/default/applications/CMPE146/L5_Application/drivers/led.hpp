@@ -21,6 +21,9 @@ public:
 	// Blink
 	void Blink(int itr);
 
+	// Toggle
+	void Toggle();
+
 protected:
 
 	// Constructor
@@ -40,7 +43,7 @@ private:
 
 	Led0() : Led(LED0) 
 	{
-		printf("Initialized LED0.\n");
+		// printf("Initialized LED0.\n");
 	}
 
 	friend class SingletonTemplate <Led0>;
@@ -52,7 +55,7 @@ private:
 
 	Led1() : Led(LED1) 
 	{
-		printf("Initialized LED1.\n");
+		// printf("Initialized LED1.\n");
 	}
 
 	friend class SingletonTemplate <Led1>;
@@ -64,7 +67,7 @@ private:
 
 	Led2() : Led(LED2) 
 	{
-		printf("Initialized LED2.\n");
+		// printf("Initialized LED2.\n");
 	}
 
 	friend class SingletonTemplate <Led2>;
@@ -76,7 +79,7 @@ private:
 
 	Led3() : Led(LED3) 
 	{
-		printf("Initialized LED3.\n");
+		// printf("Initialized LED3.\n");
 	}
 
 	friend class SingletonTemplate <Led3>;

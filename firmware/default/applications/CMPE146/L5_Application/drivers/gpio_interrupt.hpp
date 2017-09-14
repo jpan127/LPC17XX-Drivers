@@ -1,45 +1,57 @@
 #pragma once
-#include "L5_Application/drivers/gpio_input.hpp"
+#include <stdio.h>
+#include <cstdlib>
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include "L5_Application/drivers/gpio_output.hpp"
+#include "L5_Application/drivers/led.hpp"
 
-class GpioInterrupt : public GpioInput
+typedef enum { EINT0, EINT1, EINT2, EINT3 } external_interrupt_t;
+typedef enum { RISING, FALLING }            interrupt_edge_t;
+typedef void (*void_function_ptr_t)();
+
+// Configuration for a GPIO interrupt
+typedef struct
+{
+    external_interrupt_t    eint;
+    interrupt_edge_t        edge;
+    gpio_port_t             port;
+    gpio_pin_t              pin;
+    void_function_ptr_t     callback;
+} gpio_interrupt_t;
+
+// Global variables
+extern SemaphoreHandle_t EINT2_Sem;
+extern SemaphoreHandle_t EINT3_Sem;
+
+// Interrupt Handlers
+extern "C"
+{
+    void EINT2_IRQHandler();
+    void EINT3_IRQHandler();
+}
+
+class GpioInterrupt : public GpioOutput
 {
 public:
 
     // Constructor
-    GpioInterrupt(gpio_port_t port, gpio_pin_t pin);
+    GpioInterrupt(external_interrupt_t  eint, 
+                    interrupt_edge_t    edge,
+                    gpio_port_t         port, 
+                    gpio_pin_t          pin,
+                    void_function_ptr_t callback);
+
+    // Constructor with struct
+    GpioInterrupt(gpio_interrupt_t gpio_interrupt);
+
+    void RegisterCallback(void_function_ptr_t callback);
 
 private:
 
     // Initialize interrupt
-    void InitializeInterrupt(gpio_port_t port, gpio_pin_t pin);
+    void InitializeInterrupt();
+
+    // Struct containing interrupt configuration
+    gpio_interrupt_t GpioIntr;
 };
-
-GpioInterrupt::GpioInterrupt(gpio_port_t port, gpio_pin_t pin) : GpioInput(port, pin)
-{
-    InitializeInterrupt(port, pin);
-}
-
-void InitializeInterrupt(gpio_port_t port, gpio_pin_t pin)
-{
-    NVIC_DisableIRQ(EINT3_IRQn);
-
-    LPC_SC->EXTMODE  = (1 << pin);
-    LPC_SC->EXTPOLAR = (1 << pin);
-    LPC_SC->EXTINT   = (1 << pin);
-
-    switch (port)
-    {
-        case GPIO_PORT0:
-            LPC_GPIOINT->IO0IntEnR  = (1 << pin);
-            LPC_GPIOINT->IO0IntEnF  = 0;
-            break;
-
-        case GPIO_PORT2:
-            LPC_GPIOINT->IO2IntEnR  = (1 << pin);
-            LPC_GPIOINT->IO2IntEnF  = 0;
-            break;        
-    }
-
-    NVIC_EnableIRQ(EINT3_IRQn);
-
-}

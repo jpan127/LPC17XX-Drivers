@@ -36,7 +36,7 @@
 
 
 // Not using UART0 or UART1
-typedef enum { UART_PORT2, UART_PORT3 } uart_port_t;
+typedef enum { UART_PORT2 = 2, UART_PORT3 = 3 } uart_port_t;
 typedef enum { POLLING, INTERRUPT }     uart_mode_t;
 
 // Global Variables

@@ -180,15 +180,7 @@ void Uart::Init(uint32_t baud_rate)
     NVIC_EnableIRQ(IRQPtr);
     UartPtr->IER = ( IER_RBR_BIT | IER_THRE_BIT | IER_RX_LSR_BIT );
 
-    int p = -1;
-    switch (Port)
-    {
-        case UART_PORT2: p = 2;  break;
-        case UART_PORT3: p = 3;  break;
-        default:         p = -1; break;
-    }
-
-    printf("Uart %i initialized.\n", p);
+    printf("Uart %i initialized.\n", Port);
 }
 
 bool Uart::TxAvailable()

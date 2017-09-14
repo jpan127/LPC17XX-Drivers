@@ -38,7 +38,7 @@ private:
 
     Button0() : Button(BUTTON0)
     {
-        printf("Button 0 initialized.\n");
+        // printf("Button 0 initialized.\n");
     }
 
     friend class SingletonTemplate <Button0>;
@@ -50,7 +50,7 @@ private:
 
     Button1() : Button(BUTTON1)
     {
-        printf("Button 1 initialized.\n");
+        // printf("Button 1 initialized.\n");
     }
 
     friend class SingletonTemplate <Button1>;
@@ -62,7 +62,7 @@ private:
 
     Button2() : Button(BUTTON2)
     {
-        printf("Button 2 initialized.\n");
+        // printf("Button 2 initialized.\n");
     }
 
     friend class SingletonTemplate <Button2>;
@@ -74,7 +74,7 @@ private:
 
     Button3() : Button(BUTTON3)
     {
-        printf("Button 3 initialized.\n");
+        // printf("Button 3 initialized.\n");
     }
 
     friend class SingletonTemplate <Button3>;

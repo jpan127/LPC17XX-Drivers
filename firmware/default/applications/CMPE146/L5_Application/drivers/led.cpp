@@ -34,6 +34,18 @@ void Led::Blink(int itr)
 	}
 }
 
+void Led::Toggle()
+{
+	// If cleared, set
+	if (LPC_GPIO1->FIOPIN & (1 << Pin)) {
+		SetLed();
+	}
+	// Else if set, clear
+	else {
+		ClearLed();
+	}
+}
+
 void Led::SetDirectionAsOutput()
 {
 	LPC_GPIO1->FIODIR |= (1 << Pin);
