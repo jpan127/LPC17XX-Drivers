@@ -72,7 +72,7 @@ void SpiBase::Initialize(spi_mode_t mode, pclk_divisor_t divisor)
 	SspPtr->CR1 	= (mode == SPI_MASTER) ? (1 << 1) : ( (1 << 1) | (1 << 2) );
 	// Clock prescale register
 	// In slave mode SSP clock rate should not exceed 1/12 of SSP pclk
-	SspPtr->CPSR	= 24;	// pclk/24
+	SspPtr->CPSR	= 64;	// pclk/24
 
 	printf("SPI %i initialized.\n", Port);
 }
@@ -117,6 +117,7 @@ bool SpiBase::RxAvailable()
 AT45DB161::AT45DB161() : SpiBase(SPI_PORT1, SPI_MASTER), ChipSelect(GPIO_PORT0, 6)
 {
 	/* EMPTY */
+	LPC_GPIO0->FIODIR |= (1 << 0);
 }
 
 void AT45DB161::ReadStatusRegister()
@@ -344,11 +345,13 @@ void AT45DB161::ReadPage0()
 void AT45DB161::SetCSLow()
 {
 	ChipSelect.SetLow();
+	LPC_GPIO0->FIOCLR |= (1 << 0);
 }
 
 void AT45DB161::SetCSHigh()
 {
 	ChipSelect.SetHigh();
+	LPC_GPIO0->FIOSET |= (1 << 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

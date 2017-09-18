@@ -10,13 +10,15 @@
 // [TASK] Waits for Callback1 to unblock from ISR
 void InterruptCallbackTask1(void *p)
 {
-	vTaskDelay(10);
+	vTaskDelay(100);
 
 	while (1)
 	{
-		printf("[InterruptCallbackTask1] Semaphore Taken!\n");
-		if ( xSemaphoreTake(EINT2_Sem, portMAX_DELAY) ) {
-			printf("[InterruptCallbackTask1] Semaphore Given!\n");
+		vTaskDelay(100);
+
+		printf("[InterruptCallbackTask1] Semaphore [1] Taken!\n");
+		if ( xSemaphoreTake(Sem1, portMAX_DELAY) ) {
+			printf("[InterruptCallbackTask1] Semaphore [1] Given!\n");
 		}
 	}
 }
@@ -24,13 +26,15 @@ void InterruptCallbackTask1(void *p)
 // [TASK] Waits for Callback2 to unblock from ISR
 void InterruptCallbackTask2(void *p)
 {
-	vTaskDelay(20);
+	vTaskDelay(200);
 	
 	while (1)
 	{
-		printf("[InterruptCallbackTask2] Semaphore Taken!\n");
-		if ( xSemaphoreTake(EINT3_Sem, portMAX_DELAY) ) {
-			printf("[InterruptCallbackTask2] Semaphore Given!\n");
+		vTaskDelay(200);
+
+		printf("[InterruptCallbackTask2] Semaphore [2] Taken!\n");
+		if ( xSemaphoreTake(Sem2, portMAX_DELAY) ) {
+			printf("[InterruptCallbackTask2] Semaphore [2] Given!\n");
 		}
 	}
 }
@@ -39,7 +43,7 @@ void InterruptCallbackTask2(void *p)
 void Callback1()
 {
 	long yield;
-	xSemaphoreGiveFromISR(EINT2_Sem, &yield);
+	xSemaphoreGiveFromISR(Sem1, &yield);
 	portYIELD_FROM_ISR(yield);
 }
 
@@ -47,18 +51,20 @@ void Callback1()
 void Callback2()
 {
 	long yield;
-	xSemaphoreGiveFromISR(EINT3_Sem, &yield);
+	xSemaphoreGiveFromISR(Sem2, &yield);
 	portYIELD_FROM_ISR(yield);
 }
 
 // Triggers ISR that triggers callback
-class GpioInterruptTask : public scheduler_task, public GpioInterrupt
+class GpioInterruptTask : public scheduler_task
 {
 public:
 
-	GpioInterruptTask(uint8_t priority, gpio_interrupt_t gpio_interrupt) :
-											scheduler_task("Interrupt_Lab", 2048, priority),
-											GpioInterrupt(gpio_interrupt)
+	GpioInterruptTask(uint8_t priority, gpio_interrupt_t gpio_interrupt1, 
+										gpio_interrupt_t gpio_interrupt2) :
+										scheduler_task("Interrupt_Lab", 2048, priority),
+										GpioInterrupt1(gpio_interrupt1),
+										GpioInterrupt2(gpio_interrupt2)
 	{
 		/* EMPTY */
 	}
@@ -68,17 +74,23 @@ public:
 		if ( Button0::getInstance().IsPressed() ) {
 			puts("SW0 pressed");
 			// Set interrupt pin high to trigger
-			SetHigh();
+			GpioInterrupt1.SetHigh();
 		}
 
 		if ( Button1::getInstance().IsPressed() ) {
+			puts("SW1 pressed");
+			// Set interrupt pin high to trigger
+			GpioInterrupt2.SetHigh();
+		}
+
+		if ( Button2::getInstance().IsPressed() ) {
 			Led0::getInstance().ClearLed();
 			Led1::getInstance().ClearLed();
 			Led2::getInstance().ClearLed();
 			Led3::getInstance().ClearLed();
 		}
 
-		if ( Button2::getInstance().IsPressed() ) {
+		if ( Button3::getInstance().IsPressed() ) {
 			Led0::getInstance().SetLed();
 			Led1::getInstance().SetLed();
 			Led2::getInstance().SetLed();
@@ -88,4 +100,9 @@ public:
 		vTaskDelay(100);
 		return true;
 	}
+
+private:
+
+	GpioInterrupt GpioInterrupt1;
+	GpioInterrupt GpioInterrupt2;
 };

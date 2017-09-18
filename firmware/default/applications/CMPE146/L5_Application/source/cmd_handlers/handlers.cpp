@@ -55,10 +55,10 @@ CMD_HANDLER_FUNC(simpleledHandler)
 
 CMD_HANDLER_FUNC(orientationHandler)
 {
-    scheduler_task *compute = scheduler_task::getTaskPtrByName("compute");
+    scheduler_task *OrientationGetTask = scheduler_task::getTaskPtrByName("OrientationGetTask");
 
-    if (cmdParams == "on")  vTaskResume(compute->getTaskHandle());
-    else                    vTaskSuspend(compute->getTaskHandle());
+    if (cmdParams == "on")  vTaskResume(OrientationGetTask->getTaskHandle());
+    else                    vTaskSuspend(OrientationGetTask->getTaskHandle());
 
     return true;
 }

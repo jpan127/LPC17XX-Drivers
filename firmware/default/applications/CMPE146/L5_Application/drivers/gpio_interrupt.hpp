@@ -21,8 +21,8 @@ typedef struct
 } gpio_interrupt_t;
 
 // Global variables
-extern SemaphoreHandle_t EINT2_Sem;
-extern SemaphoreHandle_t EINT3_Sem;
+extern SemaphoreHandle_t Sem1;
+extern SemaphoreHandle_t Sem2;
 
 // Interrupt Handlers
 extern "C"

@@ -1,8 +1,8 @@
 #include "gpio_interrupt.hpp"
 
 // Global variables
-SemaphoreHandle_t EINT2_Sem = xSemaphoreCreateBinary();
-SemaphoreHandle_t EINT3_Sem = xSemaphoreCreateBinary();
+SemaphoreHandle_t Sem1 = xSemaphoreCreateBinary();
+SemaphoreHandle_t Sem2 = xSemaphoreCreateBinary();
 // Initialize pointer to array of pointers, pointing to structs, initialized NULL
 static gpio_interrupt_t **gpio_port0_interrupts = new gpio_interrupt_t*[31]();
 static gpio_interrupt_t **gpio_port2_interrupts = new gpio_interrupt_t*[14]();
@@ -45,11 +45,6 @@ extern "C"
         Led1::getInstance().Toggle();
         Led2::getInstance().Toggle();
         Led3::getInstance().Toggle();
-
-        // Unblock task
-        long yield = 0;
-        xSemaphoreGiveFromISR(EINT2_Sem, &yield);
-        portYIELD_FROM_ISR(yield);
     }
 
     void EINT3_IRQHandler()
@@ -86,11 +81,6 @@ extern "C"
         Led1::getInstance().Toggle();
         Led2::getInstance().Toggle();
         Led3::getInstance().Toggle();
-
-        // Unblock task
-        long yield = 0;
-        xSemaphoreGiveFromISR(EINT3_Sem, &yield);
-        portYIELD_FROM_ISR(yield);
     }
 }
 
@@ -166,12 +156,30 @@ void GpioInterrupt::InitializeInterrupt()
         case EINT3: NVIC_DisableIRQ(EINT3_IRQn); break;
     }
 
-    // Edge sensitive
-    LPC_SC->EXTMODE  |= (1 << GpioIntr.pin);
-    // Rising edge
-    LPC_SC->EXTPOLAR |= (1 << GpioIntr.pin);
-    // Clear EINT bit to start
-    LPC_SC->EXTINT   |= (1 << GpioIntr.pin);
+    // Interrupt configuration
+    switch (GpioIntr.eint)
+    {
+        case EINT0: 
+            LPC_SC->EXTMODE  |= (1 << 0);   // Edge sensitive
+            LPC_SC->EXTPOLAR |= (1 << 0);   // Rising edge
+            LPC_SC->EXTINT   |= (1 << 0);   // Clear EINT bit to start
+            break;
+        case EINT1: 
+            LPC_SC->EXTMODE  |= (1 << 1);
+            LPC_SC->EXTPOLAR |= (1 << 1);
+            LPC_SC->EXTINT   |= (1 << 1);
+            break;
+        case EINT2: 
+            LPC_SC->EXTMODE  |= (1 << 2);
+            LPC_SC->EXTPOLAR |= (1 << 2);
+            LPC_SC->EXTINT   |= (1 << 2);
+            break;
+        case EINT3: 
+            LPC_SC->EXTMODE  |= (1 << 3);
+            LPC_SC->EXTPOLAR |= (1 << 3);
+            LPC_SC->EXTINT   |= (1 << 3);
+            break;
+    }
 
     // Turn on rising edge interrupt for pin
     switch (GpioIntr.port)
@@ -179,24 +187,20 @@ void GpioInterrupt::InitializeInterrupt()
         case GPIO_PORT0:
 
             if (GpioIntr.edge == RISING) {
-                LPC_GPIOINT->IO0IntEnR = (1 << GpioIntr.pin);
-                LPC_GPIOINT->IO0IntEnF = 0;
+                LPC_GPIOINT->IO0IntEnR |= (1 << GpioIntr.pin);
             }
             else {
-                LPC_GPIOINT->IO0IntEnR = 0;
-                LPC_GPIOINT->IO0IntEnF = (1 << GpioIntr.pin);
+                LPC_GPIOINT->IO0IntEnF |= (1 << GpioIntr.pin);
             }
             break;
 
         case GPIO_PORT2:
 
             if (GpioIntr.edge == RISING) {
-                LPC_GPIOINT->IO2IntEnR = (1 << GpioIntr.pin);
-                LPC_GPIOINT->IO2IntEnF = 0;
+                LPC_GPIOINT->IO2IntEnR |= (1 << GpioIntr.pin);
             }
             else {
-                LPC_GPIOINT->IO2IntEnR = 0;
-                LPC_GPIOINT->IO2IntEnF = (1 << GpioIntr.pin);
+                LPC_GPIOINT->IO2IntEnF |= (1 << GpioIntr.pin);
             }
             break;
 
