@@ -10,4 +10,9 @@ public:
 	{
 		/* EMPTY */
 	}
+
+	void Debounce()
+	{
+		while ( IsHigh() );
+	}
 };

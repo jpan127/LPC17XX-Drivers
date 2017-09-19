@@ -230,12 +230,11 @@ void AT45DB161::ReadSectorInfo()
 	printf("\n");
 }
 
-void AT45DB161::ContinuousArrayRead()
+void AT45DB161::ReadPage0()
 {
 	SetCSLow();
 
 	ExchangeByte(0x03);	// Opcode for continuous array read for f(car2) frequencies
-
 	// First 12 bits [11:0] specify the page
 	// Last  10 bits [22:12] specify the starting byte address in the page
 	ExchangeByte(0x00);	// Address 1
@@ -243,55 +242,40 @@ void AT45DB161::ContinuousArrayRead()
 	ExchangeByte(0x00); // Address 3
 
 	char *buffer = ReadPage();
-	// Cast to struct
-	boot_sector_t *boot_sector = (boot_sector_t *)buffer;
-
-	// printf("bootstrap_address          : %s\n", boot_sector->bootstrap_address);
-	// printf("oem_name_and_version       : %s\n", boot_sector->oem_name_and_version);
-	// printf("bytes_per_sector           : %s\n", boot_sector->bytes_per_sector);
-	// printf("num_sectors_per_cluster    : %i\n", boot_sector->num_sectors_per_cluster);
-	// printf("num_reserved_sectors       : %s\n", boot_sector->num_reserved_sectors);
-	// printf("num_fat_copies             : %i\n", boot_sector->num_fat_copies);
-	// printf("num_root_directory_entries : %s\n", boot_sector->num_root_directory_entries);
-	// printf("num_total_sectors          : %s\n", boot_sector->num_total_sectors);
-	// printf("media_descriptor_type      : %i\n", boot_sector->media_descriptor_type);
-	// printf("num_sectors_per_fat        : %s\n", boot_sector->num_sectors_per_fat);
-	// printf("num_sectors_per_track      : %s\n", boot_sector->num_sectors_per_track);
-	// printf("num_heads                  : %s\n", boot_sector->num_heads);
-	// printf("num_hidden_sectors         : %s\n", boot_sector->num_hidden_sectors);
-	// printf("bootstrap                  : %s\n", boot_sector->bootstrap);
-	// printf("signature                  : %s\n", boot_sector->signature);
-
-	PrintPage((char *)boot_sector->bootstrap, 480);
+	PrintPage(buffer, 512);
 
 	SetCSHigh();
 }
 
-void AT45DB161::ReadSector(int sector, int pages)
+void AT45DB161::ReadLbaSector()
 {
-	puts("///////////////////////////////////////////////////////////////////////////////////");
-	printf("Printing Sector %i\n", sector);
+	SetCSLow();
 
-	unsigned char page[512*pages];
+	ExchangeByte(0x03);
+	ExchangeByte(0x00);	// Address 1
+	ExchangeByte(0x00); // Address 2
+	ExchangeByte(0x00); // Address 3
 
-	flash_initialize();
+	char *buffer = ReadPage();
+	PrintPage(buffer, 512);
 
-	DRESULT read_status = flash_read_sectors(page, sector, 1);
+	printf("\n\n");
+	printf("LBA: \n");
+	printf("%02X ", buffer[446+8]);
+	printf("%02X ", buffer[446+9]);
+	printf("%02X ", buffer[446+10]);
+	printf("%02X ", buffer[446+11]);
+	printf("\n\n");
 
-	if (read_status != RES_OK) 
-	{
-		printf("DRESULT: %i\n", read_status);
-	}
-	else 
-	{
-		for (int i=0; i<512*pages; i++) {
-			// Format print block of values
-			if (i%2 == 0 && i>0) std::cout << std::setw(2) << " ";
-			std::cout << std::hex << std::uppercase << static_cast<int>(page[i]);
-		}
-	}
+	ExchangeByte(0x03);
+	ExchangeByte(buffer[446+10]);
+	ExchangeByte(buffer[446+9]);
+	ExchangeByte(buffer[446+8]);
 
-	printf("\n");
+	buffer = ReadPage();
+	PrintPage(buffer, 512);
+
+	SetCSHigh();
 }
 
 char* AT45DB161::ReadPage()
@@ -307,7 +291,7 @@ char* AT45DB161::ReadPage()
 
 void AT45DB161::PrintPage(char *buffer, size_t size)
 {
-	for (int i=0; i<size; i++) {
+	for (size_t i=0; i<size; i++) {
 		// New line
 		if (i%16 == 0 && i>0) {
 			std::cout << std::endl;
@@ -318,28 +302,6 @@ void AT45DB161::PrintPage(char *buffer, size_t size)
 		}
 		std::cout << std::setw(5) << std::hex << std::uppercase << (int)buffer[i];
 	}
-}
-
-void AT45DB161::ReadPage0()
-{
-	SetCSLow();
-
-	ExchangeByte(0xD2);		// Read opcode
-	ExchangeByte(0x00);		// Address byte 1
-	ExchangeByte(0x00);		// Address byte 2
-	ExchangeByte(0x00); 	// Address byte 3
-	ExchangeByte(DUMMY); 	// Dummy   byte 1
-	ExchangeByte(DUMMY); 	// Dummy   byte 2
-	ExchangeByte(DUMMY); 	// Dummy   byte 3
-	ExchangeByte(DUMMY); 	// Dummy   byte 4
-
-	char *buffer = ReadPage();
-	PrintPage(buffer);
-	delete [] buffer;
-
-	printf("\n");
-
-	SetCSHigh();
 }
 
 void AT45DB161::SetCSLow()

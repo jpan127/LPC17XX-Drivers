@@ -18,7 +18,6 @@ int main(void)
 	
 	/* Lab 1 | GPIO | VERIFIED */
 
-	// printf("Starting Lab 1...\n");
 	// scheduler_add_task(new Switch2LedTask(PRIORITY_LOW));
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +31,7 @@ int main(void)
 
 	/* Lab 3 | SPI | VERIFIED */
 
-	// scheduler_add_task(new AT45QueryTask(PRIORITY_LOW));
+	scheduler_add_task(new AT45QueryTask(PRIORITY_LOW));
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -72,8 +71,8 @@ int main(void)
 	// xTaskCreate(&PriorityTaskLow,  "PriorityTaskLow",  1024, NULL, PRIORITY_HIGH, NULL);
 
 	// Part 2
-	scheduler_add_task(new OrientationGetTask(PRIORITY_LOW));
-	scheduler_add_task(new OrientationProcessTask(PRIORITY_MEDIUM));
+	// scheduler_add_task(new OrientationGetTask(PRIORITY_LOW));
+	// scheduler_add_task(new OrientationProcessTask(PRIORITY_MEDIUM));
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 

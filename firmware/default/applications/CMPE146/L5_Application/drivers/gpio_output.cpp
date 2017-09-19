@@ -18,3 +18,13 @@ void GpioOutput::SetLow()
 {
     SetValue(LOW);
 }
+
+void GpioOutput::Toggle()
+{
+	if (IsHigh()) {
+		SetLow();
+	}
+	else {
+		SetHigh();
+	}
+}

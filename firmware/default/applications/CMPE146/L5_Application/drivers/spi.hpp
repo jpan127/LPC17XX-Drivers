@@ -58,6 +58,16 @@ typedef struct
 	uint8_t signature[2];					// 510-511
 } __attribute__((packed)) boot_sector_t;
 
+typedef struct
+{
+	uint8_t bootstrap[446];
+	uint8_t partition_entry1[16];
+	uint8_t partition_entry2[16];
+	uint8_t partition_entry3[16];
+	uint8_t partition_entry4[16];
+	uint8_t signature[2];
+} __attribute__((packed)) master_boot_record_t;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SpiBase
@@ -123,7 +133,7 @@ public:
 	// Read only page 0
 	void 	ReadPage0();
 
-	void 	ContinuousArrayRead();
+	void	ReadLbaSector();
 
 	// [TODO] Not yet implemented
 	void 	Write();

@@ -20,8 +20,7 @@ public:
 	bool run(void *p)
 	{
 		if ( Button0::getInstance().IsPressed() ) {
-			// Read signature
-			ReadSectorInfo();
+			ReadLbaSector();
 		}
 		else if ( Button1::getInstance().IsPressed() ) {
 			// Read status register
@@ -33,7 +32,7 @@ public:
 		}
 		else if ( Button3::getInstance().IsPressed() ) {
 			// Read page zero
-			ContinuousArrayRead();
+			ReadPage0();
 		}
 
 		vTaskDelay(100);
