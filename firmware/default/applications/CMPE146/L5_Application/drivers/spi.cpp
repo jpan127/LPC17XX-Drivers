@@ -116,8 +116,13 @@ bool SpiBase::RxAvailable()
 
 AT45DB161::AT45DB161() : SpiBase(SPI_PORT1, SPI_MASTER), ChipSelect(GPIO_PORT0, 6)
 {
-	/* EMPTY */
 	LPC_GPIO0->FIODIR |= (1 << 0);
+	RecentlyReadPage = new char[512];
+}
+
+AT45DB161::~AT45DB161()
+{
+	delete [] RecentlyReadPage;
 }
 
 void AT45DB161::ReadStatusRegister()
@@ -204,37 +209,41 @@ void AT45DB161::ReadManufacturerID()
 	SetCSHigh();
 }
 
-void AT45DB161::ReadSectorInfo()
+void AT45DB161::ContinuousArrayRead(uint32_t address_12bits, uint32_t byte_10bits)
 {
-	// Initialize the flash memory
-	flash_initialize();
+    // Mask the other 20 bits
+    uint32_t address = address_12bits & 0x00000FFF;
+    // Mask the other 22 bits
+    uint32_t byte    = byte_10bits & 0x00000FFF;
+    byte        	&= ~(0x3 << 10);
+    // Combine into 22 bits
+    address      	 = (address << 10) | byte;
+    // Split up into 3 bytes
+    char byte1   	 = (char)(address >> 16);
+    char byte2   	 = (char)(address >> 8);
+    char byte3   	 = (char)(address >> 0);
 
-	puts("///////////////////////////////////////////////////////////////////////////////////");
-	printf("\n");
+    SetCSLow();
 
-	// Get sector count
-	DWORD sector_count;
-	flash_ioctl(GET_SECTOR_COUNT, &sector_count);		// Get control information
-	printf("Sector Count: %lu\n", sector_count);		// unsigned long
+    ExchangeByte(OPCODE_READ);
+    // First 12 bits [11:0] specify the page
+    // Last  10 bits [22:12] specify the starting byte address in the page
+    ExchangeByte(byte1);
+    ExchangeByte(byte2);
+    ExchangeByte(byte3);
 
-	// Get sector size
-	WORD sector_size;
-	flash_ioctl(GET_SECTOR_SIZE, &sector_size);			// Get control information
-	printf("Sector Size: %i\n", sector_size);			// unsigned short
+    char *buffer = ReadPage();
+    PrintPage(buffer, 512);
+    delete [] buffer;
 
-	// Get block size
-	DWORD block_size;
-	flash_ioctl(GET_BLOCK_SIZE, &block_size);			// Get control information
-	printf("Block Size: %lu\n", block_size);			// unsigned long
-
-	printf("\n");
+    SetCSHigh();
 }
 
 void AT45DB161::ReadPage0()
 {
 	SetCSLow();
 
-	ExchangeByte(0x03);	// Opcode for continuous array read for f(car2) frequencies
+	ExchangeByte(OPCODE_READ);
 	// First 12 bits [11:0] specify the page
 	// Last  10 bits [22:12] specify the starting byte address in the page
 	ExchangeByte(0x00);	// Address 1
@@ -243,6 +252,7 @@ void AT45DB161::ReadPage0()
 
 	char *buffer = ReadPage();
 	PrintPage(buffer, 512);
+	delete [] buffer;
 
 	SetCSHigh();
 }
@@ -251,7 +261,7 @@ void AT45DB161::ReadLbaSector()
 {
 	SetCSLow();
 
-	ExchangeByte(0x03);
+	ExchangeByte(OPCODE_READ);
 	ExchangeByte(0x00);	// Address 1
 	ExchangeByte(0x00); // Address 2
 	ExchangeByte(0x00); // Address 3
@@ -274,6 +284,7 @@ void AT45DB161::ReadLbaSector()
 
 	buffer = ReadPage();
 	PrintPage(buffer, 512);
+	delete [] buffer;
 
 	SetCSHigh();
 }

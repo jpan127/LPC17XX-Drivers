@@ -105,6 +105,9 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define OPCODE_READ	(0x03);	// Opcode for continuous array read for f(car2) frequencies
+
+// 16Mbit = 2Mbyte
 class AT45DB161 : public SpiBase
 {
 public:
@@ -112,28 +115,19 @@ public:
 	// Constructor
 	AT45DB161();
 
+	// Destructor
+	~AT45DB161();
+
 	// Reads status register, 2 bytes
 	void 	ReadStatusRegister();
 
 	// Reads manufacturer's ID, 1 byte
 	void 	ReadManufacturerID();
 
-	// Reads sector info
-	void 	ReadSectorInfo();
-
-	// Reads a particular sector for n number of pages
-	void 	ReadSector(int sector, int pages);
+	void 	ContinuousArrayRead(int address_12bits, int byte_10bits);
 
 	// Read a page by sending 512 dummy bytes and print to terminal
 	char* 	ReadPage();
-
-	// Print page
-	void	PrintPage(char *buffer, size_t size=512);
-	
-	// Read only page 0
-	void 	ReadPage0();
-
-	void	ReadLbaSector();
 
 	// [TODO] Not yet implemented
 	void 	Write();
@@ -143,11 +137,23 @@ private:
 	// Pin for chip select
 	GpioOutput ChipSelect;
 
+	// Most recently read page
+	char	*RecentlyReadPage;
+
 	// Sets flash_cs pin low before operation
 	void 	SetCSLow();
 
 	// Sets flash_cs pin back to high after operation
 	void 	SetCSHigh();
+
+	// Print page
+	void	PrintPage(char *buffer, size_t size=512);
+	
+	// Read only page 0
+	void 	ReadPage0();
+
+	// Read sector pointed to by LBA
+	void	ReadLbaSector();
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
