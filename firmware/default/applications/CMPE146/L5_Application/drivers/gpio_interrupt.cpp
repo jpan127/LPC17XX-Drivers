@@ -9,33 +9,43 @@ static gpio_interrupt_t **gpio_port2_interrupts = new gpio_interrupt_t*[14]();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Currently only one callback for rising + falling, can separate later
 extern "C" 
 {
     void EINT2_IRQHandler()
     {
         // Clear all active interrupts for GPIO port 0
-        for (int i=0; i<31; i++) {
+        for (int i=0; i<31; i++) 
+        {
             // Reserved bits [14:12]
-            if (i >= 12 && i <=14) {
+            if (i >= 12 && i <=14) 
+            {
                 continue;
             }
-            if (LPC_GPIOINT->IO0IntStatR & (1 << i)) {
+            // Checks both edges
+            if ( (LPC_GPIOINT->IO0IntStatR & (1 << i)) || (LPC_GPIOINT->IO0IntStatF & (1 << i)) ) 
+            {
                 LPC_GPIOINT->IO0IntClr  |= (1 << i);
                 LPC_GPIO0->FIOCLR       |= (1 << i);
                 // If gpio interrupt handler exists call callback
-                if (gpio_port0_interrupts[i] != NULL) {
+                if (gpio_port0_interrupts[i] != NULL) 
+                {
                     gpio_port0_interrupts[i]->callback();
                 }
             }
         }
 
         // Clear all active interrupts for GPIO port 2
-        for (int i=0; i<14; i++) {
-            if (LPC_GPIOINT->IO2IntStatR & (1 << i)) {
+        for (int i=0; i<14; i++) 
+        {
+            // Check both edges
+            if ( (LPC_GPIOINT->IO2IntStatR & (1 << i)) || (LPC_GPIOINT->IO2IntStatF & (1 << i)) ) 
+            {
                 LPC_GPIOINT->IO2IntClr  |= (1 << i);
                 LPC_GPIO2->FIOCLR       |= (1 << i);
                 // If gpio interrupt handler exists call callback
-                if (gpio_port2_interrupts[i] != NULL) {
+                if (gpio_port2_interrupts[i] != NULL) 
+                {
                     gpio_port2_interrupts[i]->callback();
                 }
             }
@@ -50,28 +60,37 @@ extern "C"
     void EINT3_IRQHandler()
     {
         // Clear all active interrupts for GPIO port 0
-        for (int i=0; i<31; i++) {
+        for (int i=0; i<31; i++) 
+        {
             // Reserved bits [14:12]
-            if (i >= 12 && i <=14) {
+            if (i >= 12 && i <=14) 
+            {
                 continue;
             }
-            if (LPC_GPIOINT->IO0IntStatR & (1 << i)) {
+            // Check both edges
+            if ( (LPC_GPIOINT->IO0IntStatR & (1 << i)) || (LPC_GPIOINT->IO0IntStatF & (1 << i)) ) 
+            {
                 LPC_GPIOINT->IO0IntClr  |= (1 << i);
                 LPC_GPIO0->FIOCLR       |= (1 << i);
                 // If gpio interrupt handler exists call callback
-                if (gpio_port0_interrupts[i] != NULL) {
+                if (gpio_port0_interrupts[i] != NULL) 
+                {
                     gpio_port0_interrupts[i]->callback();
                 }
             }
         }
 
         // Clear all active interrupts for GPIO port 2
-        for (int i=0; i<14; i++) {
-            if (LPC_GPIOINT->IO2IntStatR & (1 << i)) {
+        for (int i=0; i<14; i++) 
+        {
+            // Check both edges
+            if ( (LPC_GPIOINT->IO2IntStatR & (1 << i)) || (LPC_GPIOINT->IO2IntStatF & (1 << i)) ) 
+            {
                 LPC_GPIOINT->IO2IntClr  |= (1 << i);
                 LPC_GPIO2->FIOCLR       |= (1 << i);
                 // If gpio interrupt handler exists call callback
-                if (gpio_port2_interrupts[i] != NULL) {
+                if (gpio_port2_interrupts[i] != NULL) 
+                {
                     gpio_port2_interrupts[i]->callback();
                 }
             }

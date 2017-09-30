@@ -20,7 +20,6 @@ public:
 	bool run(void *p)
 	{
 		if ( Button0::getInstance().IsPressed() ) {
-			ReadLbaSector();
 		}
 		else if ( Button1::getInstance().IsPressed() ) {
 			// Read status register
@@ -31,8 +30,6 @@ public:
 			ReadManufacturerID();
 		}
 		else if ( Button3::getInstance().IsPressed() ) {
-			// Read page zero
-			ReadPage0();
 		}
 
 		vTaskDelay(100);

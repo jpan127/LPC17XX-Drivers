@@ -105,7 +105,7 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define OPCODE_READ	(0x03);	// Opcode for continuous array read for f(car2) frequencies
+#define OPCODE_READ	(0x03)	// Opcode for continuous array read for f(car2) frequencies
 
 // 16Mbit = 2Mbyte
 class AT45DB161 : public SpiBase
@@ -124,7 +124,7 @@ public:
 	// Reads manufacturer's ID, 1 byte
 	void 	ReadManufacturerID();
 
-	void 	ContinuousArrayRead(int address_12bits, int byte_10bits);
+	void 	ContinuousArrayRead(uint32_t address_12bits, uint32_t byte_10bits);
 
 	// Read a page by sending 512 dummy bytes and print to terminal
 	char* 	ReadPage();
