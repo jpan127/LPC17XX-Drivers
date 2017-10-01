@@ -4,8 +4,21 @@
 SemaphoreHandle_t Sem1 = xSemaphoreCreateBinary();
 SemaphoreHandle_t Sem2 = xSemaphoreCreateBinary();
 // Initialize pointer to array of pointers, pointing to structs, initialized NULL
-static gpio_interrupt_t **gpio_port0_interrupts = new gpio_interrupt_t*[31]();
-static gpio_interrupt_t **gpio_port2_interrupts = new gpio_interrupt_t*[14]();
+static gpio_interrupt_t **gpio_port0_interrupts;
+static gpio_interrupt_t **gpio_port2_interrupts;
+static bool initialized = false;
+/*
+    Interesting bug/learning experience.
+    This 2D pointer array was not pointing to the correct struct
+    even though it was getting assigned.  Changing it to a 1D pointer array worked fine.
+    I couldn't figure out why an interrupt trigger kept causing the system to crash so 
+    I traced the path of the interrupt from the gpio set to the interrupt callback function call
+    and realized the pointer was pointing to something but none of its elements were initialized.
+    I have a few function calls that copy the struct parameter, then point this array to the struct.
+    However the struct parameter was not a pointer. So I believe the assignment was valid, but
+    the struct was being destroyed as the function ended and went out of scope.  Changing the
+    original struct to a pointer, and passing everything by reference solved the issue.
+*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -51,10 +64,7 @@ extern "C"
             }
         }
         
-        Led0::getInstance().Toggle();
-        Led1::getInstance().Toggle();
-        Led2::getInstance().Toggle();
-        Led3::getInstance().Toggle();
+        LedsToggleAll();
     }
 
     void EINT3_IRQHandler()
@@ -96,78 +106,16 @@ extern "C"
             }
         }
         
-        Led0::getInstance().Toggle();
-        Led1::getInstance().Toggle();
-        Led2::getInstance().Toggle();
-        Led3::getInstance().Toggle();
+        LedsToggleAll();
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-GpioInterrupt::GpioInterrupt(external_interrupt_t eint, 
-                                                interrupt_edge_t    edge,
-                                                gpio_port_t         port, 
-                                                gpio_pin_t          pin,
-                                                void_function_ptr_t callback) : 
-                                                GpioOutput(port, pin)
-{
-    // Store configuration
-    GpioIntr.eint     = eint;
-    GpioIntr.edge     = edge;
-    GpioIntr.port     = port;
-    GpioIntr.pin      = pin;
-    GpioIntr.callback = callback;
-
-    // Store callback
-    switch (port)
-    {
-        case GPIO_PORT0: gpio_port0_interrupts[pin] = &GpioIntr; break;
-        case GPIO_PORT2: gpio_port2_interrupts[pin] = &GpioIntr; break;
-        default: 
-            printf("Interrupt on GPIO ports other than 0 and 2 are not supported.\n");
-            exit(EXIT_FAILURE);
-    }
-
-    // Initialize
-    InitializeInterrupt();
-
-    printf("GPIO External Interrupt initialized on port: %i pin: %i\n", port, pin);
-}
-
-GpioInterrupt::GpioInterrupt(gpio_interrupt_t gpio_interrupt) : 
-                            GpioOutput(gpio_interrupt.port, gpio_interrupt.pin)
-{
-    // Store configuration
-    GpioIntr = gpio_interrupt;
-
-    // Store callback
-    switch (GpioIntr.port)
-    {
-        case GPIO_PORT0: gpio_port0_interrupts[GpioIntr.pin] = &GpioIntr; break;
-        case GPIO_PORT2: gpio_port2_interrupts[GpioIntr.pin] = &GpioIntr; break;
-        default: 
-            printf("Interrupt on GPIO ports other than 0 and 2 are not supported.\n");
-            exit(EXIT_FAILURE);
-    }
-
-    // Initialize
-    InitializeInterrupt();
-
-    printf("GPIO External Interrupt initialized on port: %i pin: %i\n", 
-                                                gpio_interrupt.port, 
-                                                gpio_interrupt.pin);
-}
-
-void GpioInterrupt::RegisterCallback(void_function_ptr_t callback)
-{
-    GpioIntr.callback = callback;
-}
-
-void GpioInterrupt::InitializeInterrupt()
+static void initialize_interrupt(gpio_interrupt_t *interrupt)
 {
     // Disable interrupt before configuration
-    switch (GpioIntr.eint)
+    switch (interrupt->eint)
     {
         case EINT0: NVIC_DisableIRQ(EINT0_IRQn); break;
         case EINT1: NVIC_DisableIRQ(EINT1_IRQn); break;
@@ -176,7 +124,7 @@ void GpioInterrupt::InitializeInterrupt()
     }
 
     // Interrupt configuration
-    switch (GpioIntr.eint)
+    switch (interrupt->eint)
     {
         case EINT0: 
             LPC_SC->EXTMODE  |= (1 << 0);   // Edge sensitive
@@ -201,26 +149,20 @@ void GpioInterrupt::InitializeInterrupt()
     }
 
     // Turn on rising edge interrupt for pin
-    switch (GpioIntr.port)
+    switch (interrupt->port)
     {
         case GPIO_PORT0:
 
-            if (GpioIntr.edge == RISING) {
-                LPC_GPIOINT->IO0IntEnR |= (1 << GpioIntr.pin);
-            }
-            else {
-                LPC_GPIOINT->IO0IntEnF |= (1 << GpioIntr.pin);
-            }
+            (interrupt->edge == RISING) ?
+                ( LPC_GPIOINT->IO0IntEnR |= (1 << interrupt->pin) ) :
+                ( LPC_GPIOINT->IO0IntEnF |= (1 << interrupt->pin) );
             break;
 
         case GPIO_PORT2:
 
-            if (GpioIntr.edge == RISING) {
-                LPC_GPIOINT->IO2IntEnR |= (1 << GpioIntr.pin);
-            }
-            else {
-                LPC_GPIOINT->IO2IntEnF |= (1 << GpioIntr.pin);
-            }
+            (interrupt->edge == RISING) ?
+                ( LPC_GPIOINT->IO2IntEnR |= (1 << interrupt->pin) ) :
+                ( LPC_GPIOINT->IO2IntEnF |= (1 << interrupt->pin) );
             break;
 
         default:
@@ -229,11 +171,90 @@ void GpioInterrupt::InitializeInterrupt()
     }
 
     // Enable interrupt
-    switch (GpioIntr.eint)
+    switch (interrupt->eint)
     {
         case EINT0: NVIC_EnableIRQ(EINT0_IRQn); break;
         case EINT1: NVIC_EnableIRQ(EINT1_IRQn); break;
         case EINT2: NVIC_EnableIRQ(EINT2_IRQn); break;
         case EINT3: NVIC_EnableIRQ(EINT3_IRQn); break;
     }
+}
+
+void initialize_gpio_interrupt_arrays()
+{
+    gpio_port0_interrupts = new gpio_interrupt_t*[31]();
+    gpio_port2_interrupts = new gpio_interrupt_t*[14]();
+
+    for (int i=0; i<31; i++) {
+        gpio_port0_interrupts[i] = NULL;
+    }
+    for (int i=0; i<14; i++) {
+        gpio_port2_interrupts[i] = NULL;
+    }
+
+    initialized = true;
+}
+
+void install_gpio_interrupt(external_interrupt_t  eint,
+                            interrupt_edge_t      edge,
+                            gpio_port_t           port,
+                            gpio_pin_t            pin,
+                            void_function_ptr_t   callback)
+{
+    if (!initialized)
+    {
+        printf("[ERROR] Interrupt callback array not initialized!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    gpio_interrupt_t *interrupt = new gpio_interrupt_t;
+    // Store configuration
+    interrupt->eint     = eint;
+    interrupt->edge     = edge;
+    interrupt->port     = port;
+    interrupt->pin      = pin;
+    interrupt->callback = callback;
+
+    // Store callback
+    switch (interrupt->port)
+    {
+        case GPIO_PORT0: gpio_port0_interrupts[interrupt->pin] = interrupt; break;
+        case GPIO_PORT2: gpio_port2_interrupts[interrupt->pin] = interrupt; break;
+        default: 
+            printf("[ERROR] Interrupt on GPIO ports other than 0 and 2 are not supported.\n");
+            exit(EXIT_FAILURE);
+    }
+
+    // Initialize
+    initialize_interrupt(interrupt);
+
+    printf("GPIO External Interrupt initialized on port: %i pin: %i\n", 
+                                                interrupt->port, 
+                                                interrupt->pin);
+}
+
+void install_gpio_interrupt(gpio_interrupt_t *interrupt)
+{
+    if (!initialized)
+    {
+        printf("[ERROR] Interrupt callback array not initialized!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Store callback
+    switch (interrupt->port)
+    {
+        case GPIO_PORT0: gpio_port0_interrupts[interrupt->pin] = interrupt; break;
+        case GPIO_PORT2: gpio_port2_interrupts[interrupt->pin] = interrupt; break;
+        default: 
+            printf("[ERROR] Interrupt on GPIO ports other than 0 and 2 are not supported.\n");
+            exit(EXIT_FAILURE);
+    }
+
+    // Initialize
+    initialize_interrupt(interrupt);
+
+    printf("GPIO External Interrupt initialized on port: %i pin: %i\n", 
+                                                interrupt->port, 
+                                                interrupt->pin);
 }

@@ -50,3 +50,27 @@ void Led::SetDirectionAsOutput()
 {
 	LPC_GPIO1->FIODIR |= (1 << Pin);
 }
+
+void LedsToggleAll()
+{
+    Led0::getInstance().Toggle();
+    Led1::getInstance().Toggle();
+    Led2::getInstance().Toggle();
+    Led3::getInstance().Toggle();
+}
+
+void LedsSetAll()
+{
+	Led0::getInstance().SetLed();
+	Led1::getInstance().SetLed();
+	Led2::getInstance().SetLed();
+	Led3::getInstance().SetLed();
+}
+
+void LedsClearAll()
+{
+	Led0::getInstance().ClearLed();
+	Led1::getInstance().ClearLed();
+	Led2::getInstance().ClearLed();
+	Led3::getInstance().ClearLed();
+}

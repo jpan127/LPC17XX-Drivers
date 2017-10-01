@@ -21,10 +21,5 @@ void GpioOutput::SetLow()
 
 void GpioOutput::Toggle()
 {
-	if (IsHigh()) {
-		SetLow();
-	}
-	else {
-		SetHigh();
-	}
+    ( IsHigh() ) ? ( SetLow() ) : ( SetHigh() );
 }

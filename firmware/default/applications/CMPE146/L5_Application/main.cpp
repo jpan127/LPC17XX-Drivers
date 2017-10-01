@@ -44,19 +44,19 @@ int main(void)
 
 	/* Lab 5 | INTERRUPTS | VERIFIED */
 
-	gpio_interrupt_t gpio_interrupt1;
-	gpio_interrupt1.eint 	= EINT3;
-	gpio_interrupt1.edge 	= RISING;
-	gpio_interrupt1.port 	= GPIO_PORT2;
-	gpio_interrupt1.pin  	= 6;
-	gpio_interrupt1.callback = Callback1;
+	gpio_interrupt_t *gpio_interrupt1 = new gpio_interrupt_t;
+	gpio_interrupt1->eint 	  = EINT3;
+	gpio_interrupt1->edge 	  = RISING;
+	gpio_interrupt1->port 	  = GPIO_PORT2;
+	gpio_interrupt1->pin  	  = 6;
+	gpio_interrupt1->callback = Callback1;
 
-	gpio_interrupt_t gpio_interrupt2;
-	gpio_interrupt2.eint 	= EINT3;
-	gpio_interrupt2.edge 	= RISING;
-	gpio_interrupt2.port 	= GPIO_PORT2;
-	gpio_interrupt2.pin  	= 7;
-	gpio_interrupt2.callback = Callback2;
+	gpio_interrupt_t *gpio_interrupt2 = new gpio_interrupt_t;
+	gpio_interrupt2->eint 	  = EINT3;
+	gpio_interrupt2->edge 	  = RISING;
+	gpio_interrupt2->port 	  = GPIO_PORT2;
+	gpio_interrupt2->pin  	  = 7;
+	gpio_interrupt2->callback = Callback2;
 	scheduler_add_task(new GpioInterruptTask(PRIORITY_LOW, gpio_interrupt1, gpio_interrupt2));
 
 	xTaskCreate(&InterruptCallbackTask1, "InterruptCallbackTask1", 2048, NULL, PRIORITY_LOW, NULL);

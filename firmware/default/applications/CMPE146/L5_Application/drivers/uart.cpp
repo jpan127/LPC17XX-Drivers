@@ -8,7 +8,9 @@ extern "C"
 {
     void UART2_IRQHandler()
     {
-        uint32_t status = LPC_UART2->LSR;
+        // Read register without using
+        asm volatile ("" : : "r" (LPC_UART2->LSR));
+
         long higher_priority_task_woken = 0;
         int interrupt_type = LPC_UART2->IIR & 0x0000000F;
 
@@ -50,7 +52,9 @@ extern "C"
 
     void UART3_IRQHandler()
     {
-        uint32_t status = LPC_UART3->LSR;
+        // Read register without using
+        asm volatile ("" : : "r" (LPC_UART3->LSR));
+        
         long higher_priority_task_woken = 0;
         int interrupt_type = LPC_UART3->IIR & 0x0000000F;
 

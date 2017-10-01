@@ -8,6 +8,11 @@
 
 typedef enum { LED0, LED1, LED2, LED3 } led_t;
 
+// Helper functions for changing all LEDs at once
+void LedsToggleAll();
+void LedsSetAll();
+void LedsClearAll();
+
 class Led
 {
 public:

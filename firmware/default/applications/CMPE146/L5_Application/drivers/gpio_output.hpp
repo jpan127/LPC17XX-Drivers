@@ -20,5 +20,6 @@ public:
     // Set low
     void SetLow();
 
+    // Toggles
     void Toggle();
 };

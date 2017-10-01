@@ -6,6 +6,7 @@
 #include "L5_Application/drivers/buttons.hpp"
 #include "L5_Application/drivers/led.hpp"
 #include "L5_Application/drivers/gpio_interrupt.hpp"
+#include "L5_Application/drivers/gpio_output.hpp"
 
 // [TASK] Waits for Callback1 to unblock from ISR
 void InterruptCallbackTask1(void *p)
@@ -60,13 +61,16 @@ class GpioInterruptTask : public scheduler_task
 {
 public:
 
-	GpioInterruptTask(uint8_t priority, gpio_interrupt_t gpio_interrupt1, 
-										gpio_interrupt_t gpio_interrupt2) :
-										scheduler_task("Interrupt_Lab", 2048, priority),
-										GpioInterrupt1(gpio_interrupt1),
-										GpioInterrupt2(gpio_interrupt2)
+	GpioInterruptTask(uint8_t priority, 
+					  gpio_interrupt_t *gpio_interrupt1, 
+					  gpio_interrupt_t *gpio_interrupt2) :
+					  scheduler_task("Interrupt_Lab", 2048, priority),
+					  GpioInterrupt1(gpio_interrupt1->port, gpio_interrupt1->pin),
+					  GpioInterrupt2(gpio_interrupt2->port, gpio_interrupt2->pin)
 	{
-		/* EMPTY */
+		initialize_gpio_interrupt_arrays();
+		install_gpio_interrupt(gpio_interrupt1);
+		install_gpio_interrupt(gpio_interrupt2);
 	}
 
 	bool run(void *p)
@@ -84,17 +88,11 @@ public:
 		}
 
 		if ( Button2::getInstance().IsPressed() ) {
-			Led0::getInstance().ClearLed();
-			Led1::getInstance().ClearLed();
-			Led2::getInstance().ClearLed();
-			Led3::getInstance().ClearLed();
+			LedsClearAll();
 		}
 
 		if ( Button3::getInstance().IsPressed() ) {
-			Led0::getInstance().SetLed();
-			Led1::getInstance().SetLed();
-			Led2::getInstance().SetLed();
-			Led3::getInstance().SetLed();
+			LedsSetAll();
 		}
 
 		vTaskDelay(100);
@@ -103,6 +101,6 @@ public:
 
 private:
 
-	GpioInterrupt GpioInterrupt1;
-	GpioInterrupt GpioInterrupt2;
+	GpioOutput GpioInterrupt1;
+	GpioOutput GpioInterrupt2;
 };
