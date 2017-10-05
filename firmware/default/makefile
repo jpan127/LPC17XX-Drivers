@@ -50,6 +50,7 @@ CFLAGS = -mcpu=cortex-m3 						\
     -I"$(PROJ_DIR)/$(PROJ)/L3_Utils" 			\
     -I"$(PROJ_DIR)/$(PROJ)/L4_IO"	 			\
     -I"$(PROJ_DIR)/$(PROJ)/L5_Application"		\
+    -I"$(PROJ_DIR)/$(PROJ)/L5_Application/labs" \
     -I"$(PROJ_DIR)/$(PROJ)/"
 
 PREBUILD        	= $(PROJ_DIR)/$(PROJ)/_can_dbc/generated_can.h

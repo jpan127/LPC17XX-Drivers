@@ -3,11 +3,12 @@
 #include <iomanip>
 #include <cmath>
 #include <cstdio>
-#include "scheduler_task.hpp"
-#include "io.hpp"
-#include "tasks.hpp"
-#include "event_groups.h"
-#include "stop_watch.hpp"
+#include <scheduler_task.hpp>
+#include <io.hpp>
+#include <tasks.hpp>
+#include <event_groups.h>
+#include <stop_watch.hpp>
+#include <L4_IO/fat/disk/sd.h>
 using namespace std;
 
 /****************************************************************************************************************
@@ -33,6 +34,12 @@ public:
 		my_struct.average 	= 0;
 		QueueHandle_t my_queue = xQueueCreate(1, sizeof(shared_struct_t));
 		addSharedObject(shared_queue_id, my_queue);
+
+		// Initialize the SD card
+		DSTATUS status = sd_initialize();
+		printf("[producer_task] SD Card Status: %i\n", status);
+		status = sd_status();
+		printf("[producer_task] SD Card Status: %i\n", status);
 	}
 
 	// Grabs a sample every 1ms, after 100, computes the average and sends it to shared queue
@@ -149,7 +156,8 @@ public:
 	{
 		static int count = 0;
 
-		FILE* ins = fopen("sensor.txt", "a");										// append
+		// sd_write()
+		FILE* ins = fopen("1:sensor.txt", "a");										// append
 
 		for (int i=0; i<10; i++) {
 			cout << "[" << count++ << "] " << fixed << setprecision(3) << times[i] << ", " << averages[i] << endl;
@@ -207,21 +215,21 @@ public:
 		}
 		else if ((bits & BIT1) == BIT1)
 		{
-			FILE *stuck_log = fopen("stuck.txt", "a");
+			FILE *stuck_log = fopen("1:stuck.txt", "a");
 			fprintf(stuck_log, "[%4.3f] Stuck: Producer \n", end_time);
 			printf("[%4.3f] Stuck: Producer \n", end_time);
 			fclose(stuck_log);
 		}
 		else if ((bits & BIT2) == BIT2)
 		{
-			FILE *stuck_log = fopen("stuck.txt", "a");
+			FILE *stuck_log = fopen("1:stuck.txt", "a");
 			fprintf(stuck_log, "[%4.3f] Stuck: Consumer \n", end_time);
 			printf("[%4.3f] Stuck: Consumer \n", end_time);
 			fclose(stuck_log);
 		}
 		else
 		{
-			FILE *stuck_log = fopen("stuck.txt", "a");
+			FILE *stuck_log = fopen("1:stuck.txt", "a");
 			fprintf(stuck_log, "[%4.3f] Stuck: Producer and Consumer \n", end_time);
 			printf("[%4.3f] Stuck: Producer and Consumer \n", end_time);
 			fclose(stuck_log);
@@ -247,8 +255,9 @@ public:
 	    	cout << buffer[i];
 	    }
 	    cout << endl;
+	    // printf("%s\n", buffer);
 
-	    FILE *cpu_log = fopen("cpu.txt", "a");
+	    FILE *cpu_log = fopen("1:cpu.txt", "a");
 	    fprintf(cpu_log, buffer);
 	    fclose(cpu_log);
 	}

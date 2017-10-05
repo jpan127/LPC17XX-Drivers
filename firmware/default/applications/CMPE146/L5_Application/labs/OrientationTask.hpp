@@ -27,14 +27,17 @@ typedef struct
 } __attribute__((packed)) axis_position_t;
 
 // When OrientationProcessTask is higher priority than OrientationGetTask,
-// the after send message gets printed after the queue receives.  Otherwise it gets printed
-// immediately after the before send message.
+// the after-send message gets printed after the queue receives.  Otherwise it gets printed
+// immediately after the before-send message.  This shows how xQueueSend context switches
+// to the higher priority task.  However when they are the same priority it only yields
+// after the tick interrupt.
 
-// Block time is used to block the task until the queue receives and relinquish CPU control
-// allowing other tasks to hold the CPU until unblocked.
+// Block time is used to block the task until the queue receives an item and relinquishes
+// CPU control, yielding to other tasks.
 
-// Using zero block time would cause the task to busy wait until it is forced to context switch
-// after its allocated time.
+// Using zero block time would cause the task to immediately go to the next instruction
+// and xQueueSend again.  If the queue is full, this will repeatedly send data to the queue
+// that is lost.
 
 class OrientationGetTask : public scheduler_task
 {
@@ -103,7 +106,7 @@ public:
 
 		switch (Axis.orientation.y)
 		{
-			case UP: 	printf("UP | "); 	break;
+			case UP: 	printf("UP   | "); 	break;
 			case DOWN: 	printf("DOWN | "); 	break;
 			default:						break;
 		}
