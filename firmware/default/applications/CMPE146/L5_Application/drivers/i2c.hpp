@@ -16,10 +16,7 @@
 #define BIT_I2CONSET_I2EN   (1 << 6)    // I2C Interface Enable Flag
 #define I2CONSET_AA_I2EN    (BIT_I2CONSET_AA | BIT_I2CONSET_I2EN)
 
-// States
-#define SLAVE_CONTROL_START (0x44)      // [X100 01XX]
-
-// Enums
+// I2C ports
 typedef enum 
 { 
     I2C_PORT0, 
@@ -28,6 +25,7 @@ typedef enum
 } 
 PACKED i2c_port_t;
 
+// I2C clock speed modes
 typedef enum 
 { 
     I2C_CLOCK_MODE_100KHZ,      // Standard
@@ -94,7 +92,9 @@ protected:
     inline void     ClearAAFlag();
 
     // Read the status register
-    uint8_t         ReadStatus();
+    bool            ReadStatus(uint8_t &status);
+    // Read the data register
+    bool            ReadData(uint8_t &data)
 
     // Member Variables
     i2c_port_t      Port;
@@ -116,13 +116,12 @@ public:
     // Constructor
     I2CMaster(i2c_port_t port);
 
-    /*
-        @description            :    Master writes to a slave
-        @param slave_address    :    Address of slave being targeted
-        @param buffer           :    Pre-allocated buffer of data being sent
-        @param buffer_length    :    Length of buffer to be sent
-        @return                 :    Current state of master
-    */
+    
+    // @description            :    Master writes to a slave
+    // @param slave_address    :    Address of slave being targeted
+    // @param buffer           :    Pre-allocated buffer of data being sent
+    // @param buffer_length    :    Length of buffer to be sent
+    // @return                 :    Current state of master
     i2c_master_state_t MasterWrite( uint8_t     slave_address,
                                     char        *buffer,
                                     uint32_t    buffer_length);
@@ -141,6 +140,7 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Buffer sizes
 #define SLAVE_TX_BUFFER_SIZE    (512)
 #define SLAVE_RX_BUFFER_SIZE    (512)
 
@@ -188,6 +188,9 @@ public:
     // Destructor
     ~I2CSlave();
 
+    // Map a region of memory to the I2C memory
+    void                MapMemory(char *memory, uint32_t memory_size);
+
     i2c_slave_state_t   SlaveWrite( char        *buffer,
                                     uint32_t    buffer_length);
 
@@ -202,10 +205,17 @@ public:
 
 private:
 
+    // Helper functions to set the AA bit
+    inline void         SlaveAck();
+    inline void         SlackNack();
+
     // Stores the current state of the state machine
     i2c_slave_state_t   SlaveCurrentState;
 
-    // Instance-global buffer
+    // Stores the memory in which read/write operations access
+    char                *Memory;
+
+    // Buffers that can be filled prior to operation
     char                *SlaveTxBuffer;
     char                *SlaveRxBuffer;
 };

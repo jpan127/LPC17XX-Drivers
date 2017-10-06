@@ -106,6 +106,11 @@ void I2C::SetStartFlag()
     I2CPtr->I2CONSET |= BIT_I2CONSET_STA;
 }
 
+void I2C::SetStopFlag()
+{
+    I2CPtr->I2CONSET |= BIT_I2CONSET_STO;
+}
+
 void I2C::ClearStartFlag()
 {
     I2CPtr->I2CONCLR |= BIT_I2CONSET_STA;
@@ -121,10 +126,46 @@ void I2C::ClearAAFlag()
    I2CPtr->I2CONCLR |= BIT_I2CONSET_AA;
 }
 
-uint8_t I2C::ReadStatus()
+bool I2C::ReadStatus(uint8_t &status)
 {
     // If SI is set, read lower byte of status register, else return bogus status
-    return (I2CPtr->I2CONSET & BIT_I2CONSET_SI) ? ((uint8_t)I2CPtr->I2STAT) : 0xFF;
+    if (I2CPtr->I2CONSET & BIT_I2CONSET_SI)
+    {
+        status = (uint8_t)I2CPtr->I2STAT;
+        return true;
+    }
+    else
+    {
+        status = 0xFF;
+        return false;
+    }
+}
+
+bool I2C::ReadData(uint8_t &data)
+{
+    if (I2CPtr->I2CONSET & BIT_I2CONSET_SI)
+    {
+        data = (uint8_t)I2CPtr->I2DAT;
+        return true;
+    }
+    else
+    {
+        data = 0xFF;
+        return false;
+    }
+}
+
+bool I2C::LoadData(uint8_t data)
+{
+    if (I2CPtr->I2CONSET & BIT_I2CONSET_SI)
+    {
+        I2CPtr->I2DAT = data
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,58 +214,131 @@ i2c_slave_state_t I2CSlave::SlaveStateMachine()
     // Read status register
     uint8_t status = ReadStatus();
 
+    // Data
+    uint8_t data = 0;
+
     // Next state
+    i2c_slave_state_t next_state = SLAVE_NO_STATE;
+
+    // [TODO] Condition to ACK or NACK
+    bool condition = false;
 
     switch (status)
     {
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        //                                  Receiving states                                     //
+        ///////////////////////////////////////////////////////////////////////////////////////////
+
         case SLAVE_RX_FIRST_ADDRESSED:
-            SET_BIT(I2CPtr->I2CONSET, BIT_I2CONSET_AA);
-            CLEAR_BIT(I2CPtr->I2CONSET, BIT_I2CONSET_SI);
-            break;
         case SLAVE_RX_ARBITRATION_LOST:
-            
-            break;
         case SLAVE_RX_GENERAL_CALL:
-            
-            break;
         case SLAVE_RX_ARBITRATION_LOST_GENERAL_CALL:
-            
+            SlaveAck();
+            ClearSIFlag();
+            next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
+                                        (SLAVE_RX_DATA_RECEIVED_NACK);
             break;
+
         case SLAVE_RX_DATA_RECEIVED_ACK:
-            
+            data = ReadData();
+            ClearSIFlag();
+            next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
+                                        (SLAVE_RX_DATA_RECEIVED_NACK);
             break;
+
         case SLAVE_RX_DATA_RECEIVED_NACK:
-            
+            data = ReadData();
+            ClearSIFlag();
+            // If accepting general call SlackAck(), otherwise SlaveNack()
+            SlackAck();
+            // If generating start condition then SetStartFlag()
+            // ???
+            // Switching to not addressed mode
+            next_state = SLAVE_NO_STATE;
             break;
+
         case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_ACK:
-            
+            data = ReadData();
+            ClearSIFlag();
+            next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
+                                        (SLAVE_RX_DATA_RECEIVED_NACK);
             break;
+
         case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_NACK:
-            
+            data = ReadData();
+            ClearSIFlag();
+            // If accepting general call SlackAck(), otherwise SlaveNack()
+            SlackAck();
+            // If generating start condition then SetStartFlag()
+            // ???
+            // Switching to not addressed mode
+            next_state = SLAVE_NO_STATE;
             break;
+
         case SLAVE_RX_STOP_OR_REPEATED_STOP:
-            
+            ClearSIFlag();
+            // If accepting general call SlackAck(), otherwise SlaveNack()
+            SlackAck();
+            // If generating start condition then SetStartFlag()
+            // ???
+            // Switching to not addressed mode
+            next_state = SLAVE_NO_STATE;
             break;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        //                                  Transmitting states                                  //
+        ///////////////////////////////////////////////////////////////////////////////////////////
+
         case SLAVE_TX_FIRST_ADDRESSED:
-            
-            break;
         case SLAVE_TX_ARBITRATION_LOST:
-            
-            break;
         case SLAVE_TX_DATA_TRANSMITTED_ACK:
-            
+            ClearSIFlag();
+            // Load data
+            LoadData(load_data);
+            if (last_data)
+            {
+                SlaveNack();
+                next_state = SLAVE_NO_STATE;
+            }
+            else
+            {
+                SlaveAck();
+                next_state = SLAVE_TX_DATA_TRANSMITTED_ACK;
+            }
             break;
+
         case SLAVE_TX_DATA_TRANSMITTED_NACK:
-            
-            break;
         case SLAVE_TX_DATA_LAST_TRANSMITTED:
-            
+            ClearSIFlag();
+            // If accepting general call SlackAck(), otherwise SlaveNack()
+            SlackAck();
+            // If generating start condition then SetStartFlag()
+            // ???
+            // Switching to not addressed mode
+            next_state = SLAVE_NO_STATE;          
             break;
+
         case SLAVE_NO_STATE:
-            
+            // Nothing
             break;
+
         case SLAVE_BUS_ERROR:
-            
+            ClearSIFlag();
+            SetStopFlag();
+            printf("[ERROR] I2CSlave::SlaveStateMachine: Bus Error!\n");
             break;
+
     }
+
+    return state;
+}
+
+void I2CSlave::SlaveAck()
+{
+    SetAAFlag();
+}
+
+void I2CSlave::SlackNack()
+{
+    ClearAAFlag();
 }
