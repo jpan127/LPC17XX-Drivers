@@ -12,7 +12,7 @@ I2C::I2C(i2c_port_t port)
     }
 }
 
-void I2C::Initialize(uint32_t duty, i2c_clock_mode_t mode)
+void I2C::Initialize()
 {
     // Configure I2C pins
     switch (Port)
@@ -57,12 +57,8 @@ void I2C::Initialize(uint32_t duty, i2c_clock_mode_t mode)
             break;
     }
 
-    // Set up interrupts
-    I2CPtr->I2CONSET |= (1 << BIT_I2CONSET_SI);
-    // Enable I2C interface
-    I2CPtr->I2CONSET |= (1 << BIT_I2CONSET_I2EN);
-
-    SetDutyCycle(duty, mode);
+    // Enable interrupts
+    NVIC_EnableIRQ(IRQPtr);
 }
 
 void I2C::SetDutyCycle(uint32_t duty, i2c_clock_mode_t mode)
@@ -129,4 +125,106 @@ uint8_t I2C::ReadStatus()
 {
     // If SI is set, read lower byte of status register, else return bogus status
     return (I2CPtr->I2CONSET & BIT_I2CONSET_SI) ? ((uint8_t)I2CPtr->I2STAT) : 0xFF;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+I2CSlave::I2CSlave(i2c_port_t port) : I2C(port)
+{
+    SlaveCurrentState   = SLAVE_NO_STATE;
+    SlaveTxBuffer       = new char[SLAVE_TX_BUFFER_SIZE];
+    SlaveRxBuffer       = new char[SLAVE_RX_BUFFER_SIZE];
+}
+
+I2CSlave::~I2CSlave()
+{
+    delete [] SlaveTxBuffer;
+    delete [] SlaveRxBuffer;
+}
+
+void I2CSlave::SlaveInitialize(i2c_slave_addresses_t addresses, bool enable_general_call)
+{
+    // Call base class initialize
+    Initialize();
+
+    // Set address registers
+    // For number of addresses we are intializing, set the corresponding register
+    for (int i=0; i<addresses.num_addresses; i++)
+    {
+        // Change address to 7 bits and set the general call bit
+        uint8_t addr = (addresses.address[i] << 1) | enable_general_call;
+
+        // Set register
+        switch (i)
+        {
+            case 0: I2CPtr->I2ADR0 = addr; break;
+            case 1: I2CPtr->I2ADR1 = addr; break;
+            case 2: I2CPtr->I2ADR2 = addr; break;
+            case 3: I2CPtr->I2ADR3 = addr; break;
+        }
+    }
+
+    // Initialize I2CON register with only AA and I2EN
+    I2CPtr->I2CONSET = I2CONSET_AA_I2EN;
+}
+
+i2c_slave_state_t I2CSlave::SlaveStateMachine()
+{
+    // Read status register
+    uint8_t status = ReadStatus();
+
+    // Next state
+
+    switch (status)
+    {
+        case SLAVE_RX_FIRST_ADDRESSED:
+            SET_BIT(I2CPtr->I2CONSET, BIT_I2CONSET_AA);
+            CLEAR_BIT(I2CPtr->I2CONSET, BIT_I2CONSET_SI);
+            break;
+        case SLAVE_RX_ARBITRATION_LOST:
+            
+            break;
+        case SLAVE_RX_GENERAL_CALL:
+            
+            break;
+        case SLAVE_RX_ARBITRATION_LOST_GENERAL_CALL:
+            
+            break;
+        case SLAVE_RX_DATA_RECEIVED_ACK:
+            
+            break;
+        case SLAVE_RX_DATA_RECEIVED_NACK:
+            
+            break;
+        case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_ACK:
+            
+            break;
+        case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_NACK:
+            
+            break;
+        case SLAVE_RX_STOP_OR_REPEATED_STOP:
+            
+            break;
+        case SLAVE_TX_FIRST_ADDRESSED:
+            
+            break;
+        case SLAVE_TX_ARBITRATION_LOST:
+            
+            break;
+        case SLAVE_TX_DATA_TRANSMITTED_ACK:
+            
+            break;
+        case SLAVE_TX_DATA_TRANSMITTED_NACK:
+            
+            break;
+        case SLAVE_TX_DATA_LAST_TRANSMITTED:
+            
+            break;
+        case SLAVE_NO_STATE:
+            
+            break;
+        case SLAVE_BUS_ERROR:
+            
+            break;
+    }
 }
