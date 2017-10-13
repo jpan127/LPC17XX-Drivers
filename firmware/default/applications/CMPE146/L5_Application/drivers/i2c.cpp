@@ -175,12 +175,51 @@ I2CSlave::I2CSlave(i2c_port_t port) : I2C(port)
     SlaveCurrentState   = SLAVE_NO_STATE;
     SlaveTxBuffer       = new char[SLAVE_TX_BUFFER_SIZE];
     SlaveRxBuffer       = new char[SLAVE_RX_BUFFER_SIZE];
+
+    SlaveTxBufferIndex  = 0;
+    SlaveRxBufferIndex  = 0;
 }
 
 I2CSlave::~I2CSlave()
 {
     delete [] SlaveTxBuffer;
     delete [] SlaveRxBuffer;
+}
+
+void I2CSlave::MapMemory(char *memory, uint32_t memory_size)
+{
+    Memory      = memory;
+    MemorySize  = memory_size;
+}
+
+void I2CSlave::LoadContiguousDataToMemory(char *buffer, uint32_t memory_address, uint32_t buffer_length)
+{
+    if (MemorySize < (memory_address + buffer_length))
+    {
+        printf("[ERROR] I2CSlave::LoadContiguousDataToMemory buffer larger than memory!\n");
+    }
+    else
+    {
+        for (uint32_t i=0; i<buffer_length; i++)
+        {
+            LoadByteToMemory(buffer[i], memory_address+i);
+        }
+    }
+}
+
+void I2CSlave::LoadByteToMemory(char data, uint32_t memory_address)
+{
+    
+}
+
+i2c_slave_state_t I2CSlave::SlaveWrite(char *buffer, uint32_t buffer_length)
+{
+
+}
+
+i2c_slave_state_t I2CSlave::SlaveRead(char *buffer, uint32_t &buffer_length)
+{
+
 }
 
 void I2CSlave::SlaveInitialize(i2c_slave_addresses_t addresses, bool enable_general_call)
@@ -213,13 +252,10 @@ i2c_slave_state_t I2CSlave::SlaveStateMachine()
 {
     // Read status register
     uint8_t status = ReadStatus();
-
     // Data
-    uint8_t data = 0;
-
+    uint8_t rx_data = 0;
     // Next state
     i2c_slave_state_t next_state = SLAVE_NO_STATE;
-
     // [TODO] Condition to ACK or NACK
     bool condition = false;
 
@@ -240,14 +276,14 @@ i2c_slave_state_t I2CSlave::SlaveStateMachine()
             break;
 
         case SLAVE_RX_DATA_RECEIVED_ACK:
-            data = ReadData();
+            rx_data = ReadData();
             ClearSIFlag();
             next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
                                         (SLAVE_RX_DATA_RECEIVED_NACK);
             break;
 
         case SLAVE_RX_DATA_RECEIVED_NACK:
-            data = ReadData();
+            rx_data = ReadData();
             ClearSIFlag();
             // If accepting general call SlackAck(), otherwise SlaveNack()
             SlackAck();
@@ -258,14 +294,14 @@ i2c_slave_state_t I2CSlave::SlaveStateMachine()
             break;
 
         case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_ACK:
-            data = ReadData();
+            rx_data = ReadData();
             ClearSIFlag();
             next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
                                         (SLAVE_RX_DATA_RECEIVED_NACK);
             break;
 
         case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_NACK:
-            data = ReadData();
+            rx_data = ReadData();
             ClearSIFlag();
             // If accepting general call SlackAck(), otherwise SlaveNack()
             SlackAck();

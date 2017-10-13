@@ -191,6 +191,12 @@ public:
     // Map a region of memory to the I2C memory
     void                MapMemory(char *memory, uint32_t memory_size);
 
+    void                LoadContiguousDataToMemory( char    *buffer, 
+                                                    uint32_t memory_address, 
+                                                    uint32_t buffer_length);
+
+    void                LoadByteToMemory(char data, uint32_t memory_address);
+
     i2c_slave_state_t   SlaveWrite( char        *buffer,
                                     uint32_t    buffer_length);
 
@@ -214,8 +220,11 @@ private:
 
     // Stores the memory in which read/write operations access
     char                *Memory;
+    uint32_t            MemorySize;
 
     // Buffers that can be filled prior to operation
     char                *SlaveTxBuffer;
     char                *SlaveRxBuffer;
+    uint32_t            SlaveTxBufferIndex;
+    uint32_t            SlaveRxBufferIndex;
 };
