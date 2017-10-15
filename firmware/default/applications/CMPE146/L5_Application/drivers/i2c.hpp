@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <sys_config.h>
+#include <LPC17xx.h>
+#include <singleton_template.hpp>
 
 // Helper macros
 #define CLEAR_BIT(var, bit) (var &= ~(bit))
 #define SET_BIT(var, bit)   (var |=  (bit))
 
 // Packed attribute for enums and structs
-#define PACKED (__attribute__((packed)))
+#define PACKED              __attribute__((__packed__))
 
 // I2CONSET bits
 #define BIT_I2CONSET_AA     (1 << 2)    // Assert Acknowledge Flag
@@ -33,18 +35,6 @@ typedef enum
     I2C_CLOCK_MODE_1MHZ         // Fast Mode Plus
 } 
 PACKED i2c_clock_mode_t;
-
-// Maybe not necessary as there are internal states
-typedef enum 
-{
-    I2C_MASTER_TX,              // Master transmitting
-    I2C_MASTER_RX,              // Master receiving
-    I2C_MASTER_IDLE,            // Master not doing anything
-    I2C_SLAVE_TX,               // Slave transmitting
-    I2C_SLAVE_RX,               // Slave reading
-    I2C_SLAVE_IDLE              // Slave not doing anything
-} 
-PACKED i2c_mode_t;
 
 /*
     How the I2C register structure looks like:
@@ -73,6 +63,11 @@ PACKED i2c_mode_t;
 
 class I2C
 {
+public:
+
+    // Configures the duty cycle
+    void            SetDutyCycle(i2c_clock_mode_t mode);
+
 protected:
 
     // Constructor
@@ -81,25 +76,27 @@ protected:
     // Initialize I2C interface
     void            Initialize();
 
-    // Configures the duty cycle
-    void            SetDutyCycle(uint32_t duty, i2c_clock_mode_t mode);
-
     // I2CONSET clear/set helper functions
     inline void     ClearSIFlag();
-    inline void     SetStartFlag();
     inline void     ClearStartFlag();
-    inline void     SetAAFlag();
     inline void     ClearAAFlag();
+    inline void     SetStartFlag();
+    inline void     SetStopFlag();
+    inline void     SetAAFlag();
 
     // Read the status register
-    bool            ReadStatus(uint8_t &status);
+    uint8_t         ReadStatus();
+
     // Read the data register
-    bool            ReadData(uint8_t &data)
+    bool            ReadData(uint8_t &data);
+
+    // Load data into data register
+    bool            LoadData(uint8_t data);
 
     // Member Variables
     i2c_port_t      Port;
-    LPC_I2C_TypeDef *I2CPtr
-    IRQn_Type       IRQPtr
+    LPC_I2C_TypeDef *I2CPtr;
+    IRQn_Type       IRQPtr;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,11 +133,12 @@ public:
     i2c_master_state_t MasterRead(  uint8_t     slave_address,
                                     char        *buffer,
                                     uint32_t    &buffer_length);    
-}
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Buffer sizes
+#define SLAVE_MEMORY_SIZE       (1024)
 #define SLAVE_TX_BUFFER_SIZE    (512)
 #define SLAVE_RX_BUFFER_SIZE    (512)
 
@@ -162,12 +160,19 @@ typedef enum
     SLAVE_TX_ARBITRATION_LOST                   = 0xB0,
     SLAVE_TX_DATA_TRANSMITTED_ACK               = 0xB8,
     SLAVE_TX_DATA_TRANSMITTED_NACK              = 0xC0,
-    SLAVE_TX_DATA_LAST_TRANSMITTED              = 0xC8
+    SLAVE_TX_DATA_LAST_TRANSMITTED              = 0xC8,
     // Error states
     SLAVE_NO_STATE                              = 0xF8,
     SLAVE_BUS_ERROR                             = 0x00
 } 
 PACKED i2c_slave_state_t;
+
+typedef enum
+{
+    BUSY,
+    IDLE
+}
+PACKED i2c_state_status_t;
 
 // 1-4 addresses to configure I2ADR registers
 typedef struct
@@ -177,54 +182,97 @@ typedef struct
 } 
 PACKED i2c_slave_addresses_t;
 
+typedef struct
+{
+    uint8_t *buffer;
+    uint32_t buffer_size;
+    uint32_t buffer_index;
+}
+PACKED buffer_t;
+
 // Class for creating an I2C slave
 class I2CSlave : public I2C
 {
 public:
 
-    // Constructor
+    // Constructor, internally allocates Memory
     I2CSlave(i2c_port_t port);
+
+    // Constructor, externally allocated Memory
+    I2CSlave(i2c_port_t port, buffer_t *memory_buffer);
 
     // Destructor
     ~I2CSlave();
 
-    // Map a region of memory to the I2C memory
-    void                MapMemory(char *memory, uint32_t memory_size);
+    // Initialize with slave configuration
+    void                SlaveInitialize(i2c_slave_addresses_t addresses, 
+                                        bool enable_general_call);
 
-    void                LoadContiguousDataToMemory( char    *buffer, 
+    // [ISR] Triggers SlaveStateMachine
+    void                InterruptRoutine();
+
+    // Slave state machine
+    i2c_state_status_t  SlaveStateMachine();
+
+    // Loads a buffer of data into Memory
+    void                LoadContiguousDataToMemory( uint8_t  *buffer, 
                                                     uint32_t memory_address, 
                                                     uint32_t buffer_length);
 
-    void                LoadByteToMemory(char data, uint32_t memory_address);
+    // Reads a segment of data from Memory into buffer
+    uint32_t            ReadContiguousDataFromMemory(uint8_t *buffer, 
+                                                    uint32_t memory_address, 
+                                                    uint32_t buffer_length);
 
-    i2c_slave_state_t   SlaveWrite( char        *buffer,
-                                    uint32_t    buffer_length);
+    // Returns the state of the status register for debugging
+    uint8_t             ReturnState();
 
-    i2c_slave_state_t   SlaveRead(  char        *buffer,
-                                    uint32_t    &buffer_length);
+    // void                SlaveWrite( uint8_t     *buffer,
+    //                                 uint32_t    buffer_length);
 
-    // Initialize with slave configuration
-    void                SlaveInitialize(i2c_slave_addresses_t addresses);
-
-    // Slave state machine
-    i2c_slave_state_t   SlaveStateMachine();
+    // void                SlaveRead(  uint8_t     *buffer,
+    //                                 uint32_t    &buffer_length);
 
 private:
 
+    // Loads a single byte of data into Memory
+    void                LoadByteToMemory(uint8_t data, uint32_t memory_address);
+
+    // Reads a single byte of data from Memory
+    uint8_t             ReadByteFromMemory(uint32_t memory_address);
+
     // Helper functions to set the AA bit
     inline void         SlaveAck();
-    inline void         SlackNack();
+    inline void         SlaveNack();
 
     // Stores the current state of the state machine
     i2c_slave_state_t   SlaveCurrentState;
 
     // Stores the memory in which read/write operations access
-    char                *Memory;
-    uint32_t            MemorySize;
+    buffer_t            *Memory;
+    bool                MemoryNeedsDestruction;
 
     // Buffers that can be filled prior to operation
-    char                *SlaveTxBuffer;
-    char                *SlaveRxBuffer;
-    uint32_t            SlaveTxBufferIndex;
-    uint32_t            SlaveRxBufferIndex;
+    buffer_t            SlaveTxBuffer;
+    buffer_t            SlaveRxBuffer;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class I2C1Slave : public I2CSlave, public SingletonTemplate <I2C1Slave>
+{
+private:
+
+    I2C1Slave() : I2CSlave(I2C_PORT1) { /* EMPTY */ };
+
+    friend class SingletonTemplate <I2C1Slave>;
+};
+
+class I2C2Slave : public I2CSlave, public SingletonTemplate <I2C2Slave>
+{
+private:
+
+    I2C2Slave() : I2CSlave(I2C_PORT2) { /* EMPTY */ };
+
+    friend class SingletonTemplate <I2C2Slave>;
 };

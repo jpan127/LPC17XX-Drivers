@@ -1,4 +1,19 @@
 #include "i2c.hpp"
+#include <uart0_min.h>
+
+extern "C"
+{
+    void I2C1_IRQHandler()
+    {
+        I2C1Slave::getInstance().SlaveStateMachine();
+    }
+
+    // // Used by all the onboard sensors
+    // void I2C2_IRQHandler()
+    // {
+    //     I2C2Slave::getInstance().SlaveStateMachine();
+    // }
+}
 
 I2C::I2C(i2c_port_t port)
 {
@@ -18,11 +33,11 @@ void I2C::Initialize()
     switch (Port)
     {
         case I2C_PORT0:
-            // Turn in peripheral clock
-            LPC_SC->PCONP       |=  (0x3 << 14);
+            // Turn on peripheral clock
+            LPC_SC->PCONP           |=  (1 << 7);
             // Select I2C pin function
-            LPC_PINCON->PINSEL1 &= ~(0xF << 22);    // SDA0 : P0.27
-            LPC_PINCON->PINSEL1 |=  (0x5 << 22);    // SCL0 : P0.28
+            LPC_PINCON->PINSEL1     &= ~(0xF << 22);    // SDA0 : P0.27
+            LPC_PINCON->PINSEL1     |=  (0x5 << 22);    // SCL0 : P0.28
             // Disable pull up / pull down resistors
             // I2C_PORT0 is automatically set for open drain
 
@@ -31,29 +46,29 @@ void I2C::Initialize()
             break;
 
         case I2C_PORT1:
-            // Turn in peripheral clock
-            LPC_SC->PCONP       |=  (0x3 << 6);
+            // Turn on peripheral clock
+            LPC_SC->PCONP           |=  (1 << 19);
             // Select I2C pin function
-            LPC_PINCON->PINSEL0 &= ~(0xF << 0);     // SDA0 : P0.0
-            LPC_PINCON->PINSEL0 |=  (0xF << 0);     // SCL0 : P0.1
+            LPC_PINCON->PINSEL0     &= ~(0xF << 0);     // SDA0 : P0.0
+            LPC_PINCON->PINSEL0     |=  (0xF << 0);     // SCL0 : P0.1
             // Disable pull up / pull down resistors
-            LPC_PINCON->PINMODE &= ~(0xF << 0);
-            LPC_PINCON->PINMODE |=  (0xA << 0);
+            LPC_PINCON->PINMODE0    &= ~(0xF << 0);
+            LPC_PINCON->PINMODE0    |=  (0xA << 0);
             // Turn on open drain
-            LPC_PINCON->PINMODE_OD0 |= (0x3 << 0);
+            LPC_PINCON->PINMODE_OD0 |=  (0x3 << 0);
             break;
 
         case I2C_PORT2:
-            // Turn in peripheral clock
-            LPC_SC->PCONP       |=  (0x3 << 20);
+            // Turn on peripheral clock
+            LPC_SC->PCONP           |=  (1 << 26);
             // Select I2C pin function
-            LPC_PINCON->PINSEL0 &= ~(0xF << 20);     // SDA0 : P0.10 (0.19 too)
-            LPC_PINCON->PINSEL0 |=  (0xA << 20);     // SCL0 : P0.11 (0.20 too)
+            LPC_PINCON->PINSEL0     &= ~(0xF << 20);     // SDA0 : P0.10 (0.19 too)
+            LPC_PINCON->PINSEL0     |=  (0xA << 20);     // SCL0 : P0.11 (0.20 too)
             // Disable pull up / pull down resistors
-            LPC_PINCON->PINMODE &= ~(0xF << 20);
-            LPC_PINCON->PINMODE |=  (0xA << 20);
+            LPC_PINCON->PINMODE0    &= ~(0xF << 20);
+            LPC_PINCON->PINMODE0    |=  (0xA << 20);
             // Turn on open drain
-            LPC_PINCON->PINMODE_OD0 |= (0x3 << 10);
+            LPC_PINCON->PINMODE_OD0 |=  (0x3 << 10);
             break;
     }
 
@@ -61,8 +76,9 @@ void I2C::Initialize()
     NVIC_EnableIRQ(IRQPtr);
 }
 
-void I2C::SetDutyCycle(uint32_t duty, i2c_clock_mode_t mode)
+void I2C::SetDutyCycle(i2c_clock_mode_t mode)
 {
+    uint32_t baud      = 0;
     uint32_t pclk      = sys_get_cpu_clock();
     uint32_t duty      = 0;
     uint16_t high_duty = 0;
@@ -74,23 +90,29 @@ void I2C::SetDutyCycle(uint32_t duty, i2c_clock_mode_t mode)
     switch (mode)
     {
         case I2C_CLOCK_MODE_100KHZ:
+            baud       = 100000;
             duty       = pclk / 100000;
             high_duty  = duty / 2;
             low_duty   = duty / 2;
             break;
 
         case I2C_CLOCK_MODE_400KHZ:
+            baud       = 400000;
             duty       = pclk / 400000;
             high_duty  = duty / 2;
             low_duty   = duty / 2;
             break;
 
         case I2C_CLOCK_MODE_1MHZ:
+            baud       = 1000000;
             duty       = pclk / 1000000;
             high_duty  = duty / 2;
             low_duty   = duty / 2;
             break;
     }
+
+    printf("[I2C] Baud: %u | Pclk: %u | Duty: %u | High: %u | Low: %u\n", baud, pclk, duty, 
+                                                                          high_duty, low_duty);
 
     I2CPtr->I2SCLH = high_duty;
     I2CPtr->I2SCLL = low_duty;
@@ -98,47 +120,37 @@ void I2C::SetDutyCycle(uint32_t duty, i2c_clock_mode_t mode)
 
 void I2C::ClearSIFlag()
 {
-    I2CPtr->I2CONCLR |= BIT_I2CONSET_SI;
-}
-
-void I2C::SetStartFlag()
-{
-    I2CPtr->I2CONSET |= BIT_I2CONSET_STA;
-}
-
-void I2C::SetStopFlag()
-{
-    I2CPtr->I2CONSET |= BIT_I2CONSET_STO;
+    I2CPtr->I2CONCLR = BIT_I2CONSET_SI;
 }
 
 void I2C::ClearStartFlag()
 {
-    I2CPtr->I2CONCLR |= BIT_I2CONSET_STA;
-}
-
-void I2C::SetAAFlag()
-{
-    I2CPtr->I2CONSET |= BIT_I2CONSET_AA;
+    I2CPtr->I2CONCLR = BIT_I2CONSET_STA;
 }
 
 void I2C::ClearAAFlag()
 {
-   I2CPtr->I2CONCLR |= BIT_I2CONSET_AA;
+    I2CPtr->I2CONCLR = BIT_I2CONSET_AA;
 }
 
-bool I2C::ReadStatus(uint8_t &status)
+void I2C::SetStartFlag()
 {
-    // If SI is set, read lower byte of status register, else return bogus status
-    if (I2CPtr->I2CONSET & BIT_I2CONSET_SI)
-    {
-        status = (uint8_t)I2CPtr->I2STAT;
-        return true;
-    }
-    else
-    {
-        status = 0xFF;
-        return false;
-    }
+    I2CPtr->I2CONSET = BIT_I2CONSET_STA;
+}
+
+void I2C::SetStopFlag()
+{
+    I2CPtr->I2CONSET = BIT_I2CONSET_STO;
+}
+
+void I2C::SetAAFlag()
+{
+    I2CPtr->I2CONSET = BIT_I2CONSET_AA;
+}
+
+uint8_t I2C::ReadStatus()
+{
+    return (uint8_t)I2CPtr->I2STAT;
 }
 
 bool I2C::ReadData(uint8_t &data)
@@ -159,7 +171,7 @@ bool I2C::LoadData(uint8_t data)
 {
     if (I2CPtr->I2CONSET & BIT_I2CONSET_SI)
     {
-        I2CPtr->I2DAT = data
+        I2CPtr->I2DAT = data;
         return true;
     }
     else
@@ -170,31 +182,72 @@ bool I2C::LoadData(uint8_t data)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+void I2CSlave::SlaveAck()
+{
+    SetAAFlag();
+}
+
+void I2CSlave::SlaveNack()
+{
+    ClearAAFlag();
+}
+
 I2CSlave::I2CSlave(i2c_port_t port) : I2C(port)
 {
-    SlaveCurrentState   = SLAVE_NO_STATE;
-    SlaveTxBuffer       = new char[SLAVE_TX_BUFFER_SIZE];
-    SlaveRxBuffer       = new char[SLAVE_RX_BUFFER_SIZE];
+    // Set slave to no state
+    SlaveCurrentState = SLAVE_NO_STATE;
+    // Initialize TX / RX buffers
+    SlaveTxBuffer.buffer        = new uint8_t[SLAVE_TX_BUFFER_SIZE]();
+    SlaveRxBuffer.buffer        = new uint8_t[SLAVE_RX_BUFFER_SIZE]();
+    SlaveTxBuffer.buffer_index  = 0;
+    SlaveRxBuffer.buffer_index  = 0;
+    SlaveTxBuffer.buffer_size   = SLAVE_TX_BUFFER_SIZE;
+    SlaveRxBuffer.buffer_size   = SLAVE_RX_BUFFER_SIZE;
+    // Allocate memory
+    Memory = new buffer_t;
+    Memory->buffer          = new uint8_t[SLAVE_MEMORY_SIZE]();
+    Memory->buffer_index    = 0;
+    Memory->buffer_size     = SLAVE_MEMORY_SIZE;
+    MemoryNeedsDestruction  = true;
+}
 
-    SlaveTxBufferIndex  = 0;
-    SlaveRxBufferIndex  = 0;
+I2CSlave::I2CSlave(i2c_port_t port, buffer_t *memory_buffer) : I2C(port)
+{
+    // Set slave to no state
+    SlaveCurrentState = SLAVE_NO_STATE;
+    // Initialize TX / RX buffers
+    SlaveTxBuffer.buffer        = new uint8_t[SLAVE_TX_BUFFER_SIZE]();
+    SlaveRxBuffer.buffer        = new uint8_t[SLAVE_RX_BUFFER_SIZE]();
+    SlaveTxBuffer.buffer_index  = 0;
+    SlaveRxBuffer.buffer_index  = 0;
+    SlaveTxBuffer.buffer_size   = SLAVE_TX_BUFFER_SIZE;
+    SlaveRxBuffer.buffer_size   = SLAVE_RX_BUFFER_SIZE;
+    // Point to memory_buffer
+    Memory = memory_buffer;
+    MemoryNeedsDestruction = false;
 }
 
 I2CSlave::~I2CSlave()
 {
-    delete [] SlaveTxBuffer;
-    delete [] SlaveRxBuffer;
+    delete [] SlaveTxBuffer.buffer;
+    delete [] SlaveRxBuffer.buffer;
+
+    if (MemoryNeedsDestruction) 
+    {
+        delete [] Memory->buffer;
+        Memory->buffer = NULL;
+        delete Memory;
+        Memory = NULL;
+    }
 }
 
-void I2CSlave::MapMemory(char *memory, uint32_t memory_size)
+void I2CSlave::LoadContiguousDataToMemory(  uint8_t *buffer, 
+                                            uint32_t memory_address, 
+                                            uint32_t buffer_length)
 {
-    Memory      = memory;
-    MemorySize  = memory_size;
-}
-
-void I2CSlave::LoadContiguousDataToMemory(char *buffer, uint32_t memory_address, uint32_t buffer_length)
-{
-    if (MemorySize < (memory_address + buffer_length))
+    // Only checks to see if input goes out of bounds
+    // Does not check to see if input will overwrite
+    if (Memory->buffer_size < (memory_address + buffer_length))
     {
         printf("[ERROR] I2CSlave::LoadContiguousDataToMemory buffer larger than memory!\n");
     }
@@ -207,19 +260,38 @@ void I2CSlave::LoadContiguousDataToMemory(char *buffer, uint32_t memory_address,
     }
 }
 
-void I2CSlave::LoadByteToMemory(char data, uint32_t memory_address)
+void I2CSlave::LoadByteToMemory(uint8_t data, uint32_t memory_address)
 {
-    
+    Memory->buffer[memory_address] = data;
+    Memory->buffer_index++;
 }
 
-i2c_slave_state_t I2CSlave::SlaveWrite(char *buffer, uint32_t buffer_length)
+uint32_t I2CSlave::ReadContiguousDataFromMemory(uint8_t *buffer, 
+                                                uint32_t memory_address, 
+                                                uint32_t buffer_length)
 {
+    uint32_t data_read = 0;
 
+    // Checks to see if reading won't read out of bounds
+    if (Memory->buffer_size < memory_address + buffer_length)
+    {
+        printf("[ERROR] I2CSlave::ReadContiguousDataFromMemory buffer larger than memory!\n");
+    }
+    else
+    {
+        for (uint32_t i=0; i<buffer_length; i++)
+        {
+            buffer[i] = ReadByteFromMemory(memory_address + i);
+            data_read++;
+        }
+    }
+
+    return data_read;
 }
 
-i2c_slave_state_t I2CSlave::SlaveRead(char *buffer, uint32_t &buffer_length)
+uint8_t I2CSlave::ReadByteFromMemory(uint32_t memory_address)
 {
-
+    return Memory->buffer[memory_address];
 }
 
 void I2CSlave::SlaveInitialize(i2c_slave_addresses_t addresses, bool enable_general_call)
@@ -244,137 +316,131 @@ void I2CSlave::SlaveInitialize(i2c_slave_addresses_t addresses, bool enable_gene
         }
     }
 
+    I2CPtr->I2MASK0 = 0;
+    I2CPtr->I2MASK1 = 0;
+    I2CPtr->I2MASK2 = 0;
+    I2CPtr->I2MASK3 = 0;
+
     // Initialize I2CON register with only AA and I2EN
     I2CPtr->I2CONSET = I2CONSET_AA_I2EN;
 }
 
-i2c_slave_state_t I2CSlave::SlaveStateMachine()
+i2c_state_status_t I2CSlave::SlaveStateMachine()
 {
-    // Read status register
-    uint8_t status = ReadStatus();
-    // Data
-    uint8_t rx_data = 0;
-    // Next state
-    i2c_slave_state_t next_state = SLAVE_NO_STATE;
-    // [TODO] Condition to ACK or NACK
-    bool condition = false;
+    // Static variables
+    static  uint32_t memory_address  = 0;
+    static  bool     first_byte      = true;
 
+    // Non-static variables
+    uint8_t status  = 0;                // Read status register
+    uint8_t rx_data = 0;                // Data
+    i2c_state_status_t state = IDLE;    // State machine's status
+
+    // Condition to ACK or NACK
+    // Check to see if memory address to register is out of bounds
+    const bool memory_overrun = (memory_address >= Memory->buffer_size);
+
+    status = ReadStatus();
     switch (status)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////
         //                                  Receiving states                                     //
         ///////////////////////////////////////////////////////////////////////////////////////////
 
-        case SLAVE_RX_FIRST_ADDRESSED:
-        case SLAVE_RX_ARBITRATION_LOST:
-        case SLAVE_RX_GENERAL_CALL:
-        case SLAVE_RX_ARBITRATION_LOST_GENERAL_CALL:
+        case SLAVE_RX_FIRST_ADDRESSED:                                      // 0x60
+        case SLAVE_RX_GENERAL_CALL:                                         // 0x70
+        case SLAVE_RX_ARBITRATION_LOST:                                     // 0x68
+        case SLAVE_RX_ARBITRATION_LOST_GENERAL_CALL:                        // 0x78
             SlaveAck();
             ClearSIFlag();
-            next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
-                                        (SLAVE_RX_DATA_RECEIVED_NACK);
             break;
 
-        case SLAVE_RX_DATA_RECEIVED_ACK:
-            rx_data = ReadData();
+        case SLAVE_RX_DATA_RECEIVED_ACK:                                    // 0x80
+            ReadData(rx_data);
             ClearSIFlag();
-            next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
-                                        (SLAVE_RX_DATA_RECEIVED_NACK);
+            // First byte holds register/memory address
+            if (first_byte)
+            {
+                memory_address = rx_data;
+                first_byte     = false;
+                state          = BUSY;
+            }
+            // If memory overrun just clear AA bit
+            else if (memory_overrun)
+            {
+                SlaveNack();
+            }
+            // Not first byte, load byte into memory, increment address
+            else
+            {
+                Memory->buffer[memory_address] = rx_data;
+                Memory->buffer_index++;
+                memory_address++;
+                SlaveAck();
+                state = BUSY;
+            }
             break;
 
-        case SLAVE_RX_DATA_RECEIVED_NACK:
-            rx_data = ReadData();
+        case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_ACK:                       // 0x90
+            // Read general call's first byte, not sure what to do with it
+            first_byte = true;
+            ReadData(rx_data);
             ClearSIFlag();
-            // If accepting general call SlackAck(), otherwise SlaveNack()
-            SlackAck();
-            // If generating start condition then SetStartFlag()
-            // ???
-            // Switching to not addressed mode
-            next_state = SLAVE_NO_STATE;
+            ClearAAFlag();
             break;
 
-        case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_ACK:
-            rx_data = ReadData();
+        case SLAVE_RX_DATA_RECEIVED_NACK:                                   // 0x88
+        case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_NACK:                      // 0x98
+        case SLAVE_RX_STOP_OR_REPEATED_STOP:                                // 0xA0
+            SlaveAck();
+            ClearStartFlag();
             ClearSIFlag();
-            next_state = (condition) ?  (SLAVE_RX_DATA_RECEIVED_ACK) : 
-                                        (SLAVE_RX_DATA_RECEIVED_NACK);
-            break;
-
-        case SLAVE_RX_GENERAL_CALL_DATA_RECEIVED_NACK:
-            rx_data = ReadData();
-            ClearSIFlag();
-            // If accepting general call SlackAck(), otherwise SlaveNack()
-            SlackAck();
-            // If generating start condition then SetStartFlag()
-            // ???
-            // Switching to not addressed mode
-            next_state = SLAVE_NO_STATE;
-            break;
-
-        case SLAVE_RX_STOP_OR_REPEATED_STOP:
-            ClearSIFlag();
-            // If accepting general call SlackAck(), otherwise SlaveNack()
-            SlackAck();
-            // If generating start condition then SetStartFlag()
-            // ???
-            // Switching to not addressed mode
-            next_state = SLAVE_NO_STATE;
+            // Reset so next first byte will store register address
+            first_byte = true;
             break;
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         //                                  Transmitting states                                  //
         ///////////////////////////////////////////////////////////////////////////////////////////
 
-        case SLAVE_TX_FIRST_ADDRESSED:
-        case SLAVE_TX_ARBITRATION_LOST:
-        case SLAVE_TX_DATA_TRANSMITTED_ACK:
-            ClearSIFlag();
-            // Load data
-            LoadData(load_data);
-            if (last_data)
+        case SLAVE_TX_FIRST_ADDRESSED:                                      // 0xA8
+        case SLAVE_TX_ARBITRATION_LOST:                                     // 0xB0
+        case SLAVE_TX_DATA_TRANSMITTED_ACK:                                 // 0xB8
+            if (memory_overrun)
             {
-                SlaveNack();
-                next_state = SLAVE_NO_STATE;
+                ClearAAFlag();
             }
             else
             {
-                SlaveAck();
-                next_state = SLAVE_TX_DATA_TRANSMITTED_ACK;
+                LoadData(Memory->buffer[memory_address]);
+                memory_address++;
+                Memory->buffer_index++;
+                SetAAFlag();
+                state = BUSY;
             }
-            break;
-
-        case SLAVE_TX_DATA_TRANSMITTED_NACK:
-        case SLAVE_TX_DATA_LAST_TRANSMITTED:
             ClearSIFlag();
-            // If accepting general call SlackAck(), otherwise SlaveNack()
-            SlackAck();
-            // If generating start condition then SetStartFlag()
-            // ???
-            // Switching to not addressed mode
-            next_state = SLAVE_NO_STATE;          
             break;
 
-        case SLAVE_NO_STATE:
-            // Nothing
+        case SLAVE_TX_DATA_TRANSMITTED_NACK:                                // 0xC0
+        case SLAVE_TX_DATA_LAST_TRANSMITTED:                                // 0xC8
+            SlaveAck();
+            ClearSIFlag();
             break;
 
-        case SLAVE_BUS_ERROR:
+        case SLAVE_NO_STATE:                                                // 0xF8
+            break;
+
+        case SLAVE_BUS_ERROR:                                               // 0x00
             ClearSIFlag();
             SetStopFlag();
-            printf("[ERROR] I2CSlave::SlaveStateMachine: Bus Error!\n");
+            ClearStartFlag();
             break;
-
     }
 
     return state;
 }
 
-void I2CSlave::SlaveAck()
+uint8_t I2CSlave::ReturnState()
 {
-    SetAAFlag();
-}
-
-void I2CSlave::SlackNack()
-{
-    ClearAAFlag();
+    return ReadStatus();
 }

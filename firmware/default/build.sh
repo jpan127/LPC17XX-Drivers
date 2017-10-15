@@ -23,15 +23,13 @@ DEBUG=0
 SILENT="-s"
 CLEAN=0
 
-### if first argument is spotless, make spotless
-if [ "$1" == "spotless" ]
+### If application name not empty save it 
+if [[ ! -z "$1" ]] && [[ ! "$1" =~ ^-.* ]]
 then
-	make spotless
-	exit 0
-### else if first argument is clean, make clean
-elif [ "$1" == "clean" ]
-then
-	make clean PROJ=$2
+	APPLICATION=$1
+	shift
+else
+	echo -e "\nInvalid Application name: $1\nlast argument must be application name"
 	exit 0
 fi
 
@@ -41,7 +39,7 @@ fi
 
 
 ### Parse arguments
-while [[ $# -gt 1 ]]
+while [[ $# -gt 0 ]]
 do
 	key="$1"
 
@@ -79,6 +77,7 @@ do
 		;;
 		-c|--clean)
 			CLEAN=1
+			echo "Clean"
 		;;
 		*)
 		        # unknown option
@@ -98,15 +97,6 @@ then
 	echo "    DEBUG=$DEBUG"
 	echo "==========================================="
 	echo
-fi
-
-### If application name not empty save it 
-if [[ ! -z "$1" ]] && [[ ! "$1" =~ ^-.* ]]
-then
-	APPLICATION=$1
-else
-	echo -e "\nInvalid Application name: $1\nlast argument must be application name"
-	exit 0
 fi
 
 if [ $CLEAN == 1 ]
