@@ -208,10 +208,7 @@ public:
     void                SlaveInitialize(i2c_slave_addresses_t addresses, 
                                         bool enable_general_call);
 
-    // [ISR] Triggers SlaveStateMachine
-    void                InterruptRoutine();
-
-    // Slave state machine
+    // [ISR] Slave state machine
     i2c_state_status_t  SlaveStateMachine();
 
     // Loads a buffer of data into Memory
@@ -226,12 +223,6 @@ public:
 
     // Returns the state of the status register for debugging
     uint8_t             ReturnState();
-
-    // void                SlaveWrite( uint8_t     *buffer,
-    //                                 uint32_t    buffer_length);
-
-    // void                SlaveRead(  uint8_t     *buffer,
-    //                                 uint32_t    &buffer_length);
 
 private:
 

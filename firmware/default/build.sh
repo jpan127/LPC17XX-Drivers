@@ -17,7 +17,7 @@ fi
 
 ### Setup Project Target
 APPLICATION="CMPE146"
-THREADS="-j1"
+THREADS="-j"
 ENTITY_NAME=DBG
 DEBUG=0
 SILENT="-s"

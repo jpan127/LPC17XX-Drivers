@@ -3,6 +3,7 @@
 #include <scheduler_task.hpp>
 #include <task.h>
 #include "L5_Application/drivers/i2c.hpp"
+#include "L5_Application/drivers/buttons.hpp"
 
 class I2CSlaveTask : public scheduler_task
 {
@@ -16,8 +17,6 @@ public:
         addresses.num_addresses = 1;
         I2C1Slave::getInstance().SlaveInitialize(addresses, true);
 
-        I2C1Slave::getInstance().SetDutyCycle(I2C_CLOCK_MODE_400KHZ);
-        
         // Load some data into it
         uint32_t buffer_length  = 256;
         uint8_t *buffer         = new uint8_t[buffer_length];
@@ -38,6 +37,10 @@ public:
         if (I2C1Slave::getInstance().ReturnState() != status) {
             status = I2C1Slave::getInstance().ReturnState();
             printf("Status: %02X\n", status);
+        }
+
+        if (Button0::getInstance().IsPressed()) {
+
         }
 
         return true;
