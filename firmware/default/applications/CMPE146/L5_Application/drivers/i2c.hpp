@@ -224,13 +224,13 @@ public:
     // Returns the state of the status register for debugging
     uint8_t             ReturnState();
 
-private:
-
     // Loads a single byte of data into Memory
     void                LoadByteToMemory(uint8_t data, uint32_t memory_address);
 
     // Reads a single byte of data from Memory
     uint8_t             ReadByteFromMemory(uint32_t memory_address);
+
+private:
 
     // Helper functions to set the AA bit
     inline void         SlaveAck();

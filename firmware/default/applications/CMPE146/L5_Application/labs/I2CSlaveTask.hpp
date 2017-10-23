@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <scheduler_task.hpp>
 #include <task.h>
+#include <LED_Display.hpp>
+#include <temperature_sensor.hpp>
 #include "L5_Application/drivers/i2c.hpp"
 #include "L5_Application/drivers/buttons.hpp"
 
@@ -18,7 +20,7 @@ public:
         I2C1Slave::getInstance().SlaveInitialize(addresses, true);
 
         // Load some data into it
-        uint32_t buffer_length  = 256;
+        uint32_t buffer_length  = 128;
         uint8_t *buffer         = new uint8_t[buffer_length];
         uint32_t memory_address = 0;
 
@@ -32,15 +34,30 @@ public:
 
     bool run(void *p)
     {
-        static uint8_t status = 0;
+        static uint8_t status   = 0;
+        static uint8_t reg_1000 = 0;
+        static bool    left     = 1;
 
+        // Log any change in state
         if (I2C1Slave::getInstance().ReturnState() != status) {
             status = I2C1Slave::getInstance().ReturnState();
             printf("Status: %02X\n", status);
         }
 
-        if (Button0::getInstance().IsPressed()) {
-
+        uint8_t byte = I2C1Slave::getInstance().ReadByteFromMemory(200);
+        if (byte != reg_1000)
+        {
+            if (left)
+            {
+                LED_Display::getInstance().setLeftDigit((char)byte);
+            }
+            else
+            {
+                LED_Display::getInstance().setRightDigit((char)byte);
+            }
+            // Switch 7segs
+            left     = !left;
+            reg_1000 = byte;
         }
 
         return true;
