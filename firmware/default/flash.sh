@@ -35,11 +35,17 @@ do
             fi
             shift
         ;;
-        --port)
+        -p|--port)
             # If string, not null, and follows format /dev/ttyUSB<N>
-            if [[ ! -z "$2" ]] && [[ "$2" =~ ^\/dev\/ttyUSB[0-9] ]]
+            if [[ ! -z "$2" ]]
             then
-                PORT="$2"
+                if [[ "$2" =~ ^\/dev\/ttyUSB[0-9] ]]
+                then
+                    PORT="$2"
+                elif [[ "$2" =~ ^ttyUSB[0-9] ]]
+                then
+                    PORT="/dev/$2"
+                fi
             else
                 echo "Illegal port name: $2"
                 exit 1
