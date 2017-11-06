@@ -9,7 +9,6 @@
 #include <tasks.hpp>
 #include <event_groups.h>
 #include <stop_watch.hpp>
-#include <L4_IO/fat/disk/sd.h>
 
 
 // Helper macros
@@ -47,12 +46,6 @@ public:
         // Create a queue, and add shared object
         QueueHandle_t my_queue = xQueueCreate(1, sizeof(shared_data_t));
         addSharedObject(QUEUE_ID, my_queue);
-
-        // Initialize the SD card
-        DSTATUS status = sd_initialize();
-        printf("[ProducerTask] SD Card Status: %i\n", status);
-        status = sd_status();
-        printf("[ProducerTask] SD Card Status: %i\n", status);
     }
 
     // Grabs a sample every 1ms, after 100, computes the average and sends it to shared queue
@@ -169,7 +162,7 @@ public:
     {
         static int count = 0;
 
-        FILE* file = fopen("sensor.txt", "a");                                     // append
+        FILE *file = fopen("1:sensor.txt", "a");
 
         if (file)
         {            
@@ -180,8 +173,20 @@ public:
             }
 
             fclose(file);
-            count++;
         }
+
+        FILE *csv = fopen("1:sensor.csv", "a");
+
+        if (csv)
+        {
+            for (int i=0; i<10; i++)
+            {
+                fprintf(csv, "%i,%4.3f,%4.3f\n", count, Times[i], Averages[i]);
+            }
+            fclose(csv);
+        }
+
+        count++;
     }
 
 private:
@@ -248,41 +253,47 @@ public:
         {
             case BITS_1_2:
             {
-                // Time remaining in milliseconds if xEventGroupWaitBits returned early
-                float time_left = (1 - (end_time - start_time)) * 1000;
-                vTaskDelay(time_left);
+                // Empty
+                break;
             }
             case BIT1:
             {
-                FILE *file = fopen("stuck.txt", "a");
+                FILE *file = fopen("1:stuck.txt", "a");
                 if (file)
                 {
                     printf(       "[%4.3f] Stuck: Producer \n", end_time);
                     fprintf(file, "[%4.3f] Stuck: Producer \n", end_time);
                     fclose(file);             
                 }
+                break;
             }
             case BIT2:
             {
-                FILE *file = fopen("stuck.txt", "a");
+                FILE *file = fopen("1:stuck.txt", "a");
                 if (file)
                 {
                     printf(       "[%4.3f] Stuck: Consumer \n", end_time);
                     fprintf(file, "[%4.3f] Stuck: Consumer \n", end_time);
                     fclose(file);
                 }
+                break;
             }
             default:
             {
-                FILE *file = fopen("stuck.txt", "a");
+                FILE *file = fopen("1:stuck.txt", "a");
                 if (file)
                 {
                     printf(       "[%4.3f] Stuck: Producer and Consumer \n", end_time);
                     fprintf(file, "[%4.3f] Stuck: Producer and Consumer \n", end_time);
                     fclose(file);
                 }
+                break;
             }
         }
+        
+        // Time remaining in milliseconds if xEventGroupWaitBits returned early
+        float time_left = (1 - (end_time - start_time)) * 1000;
+        DELAY(time_left);
     }
 
     // Prints out CPU usage information
@@ -293,10 +304,11 @@ public:
 
         printf("%s\n", buffer);
 
-        FILE *file = fopen("cpu.txt", "a");
+        FILE *file = fopen("1:cpu.txt", "a");
         if (file)
         {
-            fprintf(file, buffer);
+            printf("%s\n", buffer);
+            fprintf(file,  buffer);
             fclose(file);
         }
     }

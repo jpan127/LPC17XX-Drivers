@@ -7,7 +7,7 @@
 #include "L5_Application/labs/I2CMasterTask.hpp"        // Lab5
 #include "L5_Application/labs/OrientationTask.hpp"      // Lab6
 #include "L5_Application/labs/PriorityTasks.hpp"        // Lab6
-// #include "L5_Application/labs/producer_consumer.cpp" // Lab7
+#include "L5_Application/labs/ProducerConsumerTasks.cpp" // Lab7
 // #include "infrared.cpp"
 // #include "bluetooth.cpp"
 // #include "motor.hpp"
@@ -40,13 +40,8 @@ int main(void)
 
     /* Lab 4 | I2C | VERIFIED */
 
-<<<<<<< HEAD
     // scheduler_add_task(new I2CSlaveTask(PRIORITY_MEDIUM, I2C_PORT2));
     // scheduler_add_task(new I2CMasterTask(PRIORITY_MEDIUM));
-=======
-    scheduler_add_task(new I2CSlaveTask(PRIORITY_MEDIUM, I2C_PORT2));
-    scheduler_add_task(new I2CMasterTask(PRIORITY_MEDIUM));
->>>>>>> I2C
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -86,10 +81,9 @@ int main(void)
 
     /* Lab 7 | PRODUCER/CONSUMER/WATCHDOG | Finished everything except reading files from SD card */
 
-    // scheduler_add_task(new producer_task(PRIORITY_MEDIUM));
-    // scheduler_add_task(new consumer_task(PRIORITY_MEDIUM));
-    // scheduler_add_task(new watchdog_task(PRIORITY_HIGH));
-    // scheduler_add_task(new terminalTask(PRIORITY_HIGH));
+    scheduler_add_task(new ProducerTask(PRIORITY_MEDIUM));
+    scheduler_add_task(new ConsumerTask(PRIORITY_MEDIUM));
+    scheduler_add_task(new WatchdogTask(PRIORITY_HIGH));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
