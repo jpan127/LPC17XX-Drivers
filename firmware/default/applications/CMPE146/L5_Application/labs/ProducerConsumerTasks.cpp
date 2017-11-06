@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <scheduler_task.hpp>
 #include <io.hpp>
 #include <tasks.hpp>
@@ -140,13 +141,13 @@ public:
     void HandleData()
     {
         // Store average and time of arrival
-        averages[counter] = my_struct.average;
-        times[counter++]  = US_TO_MS(Timer.getElapsedTime());
+        Averages[Counter] = LightData.average;
+        Times[Counter++]  = US_TO_MS(Timer.getElapsedTime());
 
         // After 10 averages (1000ms), write to file
-        if (counter == 10) 
+        if (Counter == 10) 
         {
-            counter = 0;
+            Counter = 0;
             WriteToFile();
         }
     }
@@ -174,8 +175,8 @@ public:
         {            
             for (int i=0; i<10; i++) 
             {
-                printf(       "[%i] %4.3f : %4.3f\n", count, times[i], averages[i]);
-                fprintf(file, "[%i] %4.3f : %4.3f\n", count, times[i], averages[i]);
+                printf(       "[%i] %4.3f : %4.3f\n", count, Times[i], Averages[i]);
+                fprintf(file, "[%i] %4.3f : %4.3f\n", count, Times[i], Averages[i]);
             }
 
             fclose(file);

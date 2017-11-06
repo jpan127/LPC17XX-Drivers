@@ -74,8 +74,8 @@ int main(void)
     // xTaskCreate(&PriorityTaskLow,  "PriorityTaskLow",  1024, NULL, PRIORITY_HIGH, NULL);
 
     // Part 2
-    // scheduler_add_task(new OrientationGetTask(PRIORITY_LOW));
-    // scheduler_add_task(new OrientationProcessTask(PRIORITY_MEDIUM));
+    scheduler_add_task(new OrientationGetTask(PRIORITY_LOW));
+    scheduler_add_task(new OrientationProcessTask(PRIORITY_MEDIUM));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 

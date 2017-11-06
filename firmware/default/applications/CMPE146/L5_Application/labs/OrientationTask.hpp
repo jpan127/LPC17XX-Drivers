@@ -41,6 +41,8 @@ typedef struct
 // and xQueueSend again.  If the queue is full, this will repeatedly send data to the queue
 // that is lost.
 
+bool print = true;
+
 class OrientationGetTask : public scheduler_task
 {
 public:
@@ -60,22 +62,22 @@ public:
         Axis.orientation.x = (Axis.x > 0) ? (LEFT) : (RIGHT);
         Axis.orientation.y = (Axis.y > 0) ? (UP)   : (DOWN);
 
-        puts("[OrientationGetTask] Before send.");
+        if (print) puts("[OrientationGetTask] Before send.");
 
         if ( !(xQueueSend(Queue, &Axis, portMAX_DELAY)) )
         {
-            puts("[OrientationGetTask] Failed to send.");
+            if (print) puts("[OrientationGetTask] Failed to send.");
         }
         
-        puts("[OrientationGetTask] After send.");
+        if (print) puts("[OrientationGetTask] After send.");
     }
 
     bool run(void* p)
     {
-        // if ( Button0::getInstance().IsPressed() ) 
-        // {
-        //     SendToQueue();
-        // }
+        if ( Button0::getInstance().IsPressed() ) 
+        {
+            print = ~print;
+        }
 
         SendToQueue();
         DELAY(1000);
@@ -108,10 +110,10 @@ public:
 
         if ( !(xQueueReceive(Queue, &Axis, portMAX_DELAY)) )
         {
-            puts("[OrientationProcessTask] Failed to receive.");
+            if (print) puts("[OrientationProcessTask] Failed to receive.");
         }
 
-        printf("X: %i | Y: %i | Z: %i\n", Axis.x, Axis.y, Axis.z);
+        printf("X: %i | Y: %i | Z: %i | ", Axis.x, Axis.y, Axis.z);
 
         switch (Axis.orientation.y)
         {
