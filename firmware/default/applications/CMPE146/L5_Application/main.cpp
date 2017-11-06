@@ -40,8 +40,13 @@ int main(void)
 
     /* Lab 4 | I2C | VERIFIED */
 
+<<<<<<< HEAD
     // scheduler_add_task(new I2CSlaveTask(PRIORITY_MEDIUM, I2C_PORT2));
     // scheduler_add_task(new I2CMasterTask(PRIORITY_MEDIUM));
+=======
+    scheduler_add_task(new I2CSlaveTask(PRIORITY_MEDIUM, I2C_PORT2));
+    scheduler_add_task(new I2CMasterTask(PRIORITY_MEDIUM));
+>>>>>>> I2C
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -74,8 +79,8 @@ int main(void)
     // xTaskCreate(&PriorityTaskLow,  "PriorityTaskLow",  1024, NULL, PRIORITY_HIGH, NULL);
 
     // Part 2
-    scheduler_add_task(new OrientationGetTask(PRIORITY_LOW));
-    scheduler_add_task(new OrientationProcessTask(PRIORITY_MEDIUM));
+    // scheduler_add_task(new OrientationGetTask(PRIORITY_LOW));
+    // scheduler_add_task(new OrientationProcessTask(PRIORITY_MEDIUM));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
