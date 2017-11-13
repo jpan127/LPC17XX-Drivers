@@ -7,7 +7,7 @@ typedef enum
 {
     OPCODE_READ  = 0x03,
     OPCODE_WRITE = 0x02
-} vs1035b_opcode_t;
+} vs1053b_opcode_t;
 
 typedef enum 
 {
@@ -47,69 +47,44 @@ typedef enum
     SCI_reg_last_invalid
 } SCI_reg;
 
-static SCI_reg_t SCI_reg_map[] = {
-    [MODE]          = { .reg_num=MODE,        .can_write=true,  .reset_value=0x4000, .clock_cycles=80   .reg_value=0 };
-    [STATUS]        = { .reg_num=STATUS,      .can_write=true,  .reset_value=0x000C, .clock_cycles=80   .reg_value=0 };
-    [BASS]          = { .reg_num=BASS,        .can_write=true,  .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-    [CLOCKF]        = { .reg_num=CLOCKF,      .can_write=true,  .reset_value=0x0000, .clock_cycles=1200 .reg_value=0 };
-    [DECODE_TIME]   = { .reg_num=DECODE_TIME, .can_write=true,  .reset_value=0x0000, .clock_cycles=100  .reg_value=0 };
-    [AUDATA]        = { .reg_num=AUDATA,      .can_write=true,  .reset_value=0x0000, .clock_cycles=450  .reg_value=0 };
-    [WRAM]          = { .reg_num=WRAM,        .can_write=true,  .reset_value=0x0000, .clock_cycles=100  .reg_value=0 };
-    [WRAMADDR]      = { .reg_num=WRAMADDR,    .can_write=true,  .reset_value=0x0000, .clock_cycles=100  .reg_value=0 };
-    [HDAT0]         = { .reg_num=HDAT0,       .can_write=false, .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-    [HDAT1]         = { .reg_num=HDAT1,       .can_write=false, .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-    [AIADDR]        = { .reg_num=AIADDR,      .can_write=true,  .reset_value=0x0000, .clock_cycles=210  .reg_value=0 };
-    [VOL]           = { .reg_num=VOL,         .can_write=true,  .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-    [AICTRL0]       = { .reg_num=AICTRL0,     .can_write=true,  .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-    [AICTRL1]       = { .reg_num=AICTRL1,     .can_write=true,  .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-    [AICTRL2]       = { .reg_num=AICTRL2,     .can_write=true,  .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-    [AICTRL3]       = { .reg_num=AICTRL3,     .can_write=true,  .reset_value=0x0000, .clock_cycles=80   .reg_value=0 };
-};
-
 typedef struct 
 {
     bool FastFowardMode;
     bool RewindMode;
 
-} vs1035b_status_t;
+} vs1053b_status_t;
 
 
-class VS1035b
+class VS1053b
 {
 public:
 
-    // @description     : Constructor
-    VS1035b();
+    // @description     : Constructor, initializes the device
+    VS1053b();
 
     // @description     : Sends a single byte to the device
-    // @param opcode    : Opcode to specify a read or write operation
     // @param address   : Address of register to write the data to
     // @param data      : The data byte to write
-    // @returns         : True for successful, false for unsuccessful
-    bool TransferSingleData(vs1035b_opcode_t opcode, uint8_t address, uint16_t data);
+    void TransferSingleData(uint16_t address, uint16_t data);
 
     // @description     : Receives a single byte from the device
-    // @param opcode    : Opcode to specify a read or write operation
     // @param address   : Address of register to read the data from
     // @param data      : The data byte returned
-    // @returns         : True for successful, false for unsuccessful
-    bool ReceiveSingleData(vs1035b_opcode_t opcode, uint8_t address, uint16_t &data);
+    void ReceiveSingleData(uint16_t address, uint16_t *data);
 
     // @description     : Sends an array of bytes to the device
-    // @param opcode    : Opcode to specify a read or write operation
     // @param address   : The starting address of registers to write the data to
     // @param data      : Pointer to array of data to write
     // @param size      : Size of array
     // @returns         : True for successful, false for unsuccessful
-    bool TransferStreamData(vs1035b_opcode_t opcode, uint8_t address, uint16_t *data, uint32_t size);
+    bool TransferStreamData(uint16_t address, uint16_t *data, uint16_t size);
 
     // @description     : Receives an array of bytes to the device
-    // @param opcode    : Opcode to specify a read or write operation
     // @param address   : The starting address of registers to read the data from
     // @param data      : Pointer to array of data to write
-    // @param size      : Size of array
-    // @returns         : True for successful, false for unsuccessful
-    bool ReceiveStreamData(vs1035b_opcode_t opcode, uint8_t address, uint16_t *data, uint32_t &size);
+    // @param size      : Size of array to receive
+    // @returns         : Size of stream received
+    uint16_t ReceiveStreamData(uint16_t address, uint16_t *data, uint16_t size);
 
     // @description     : Cancels the decoding if in the process of decoding
     void CancelDecoding();
@@ -189,18 +164,21 @@ public:
     void PlaybackStateMachine();
 
     // @description     : Reads the current status information from the device and updates the struct
-    void UpdateStatus();
+    void UpdateStatusMap();
+
+    // @description     : Reads the value of each register and updates the register map
+    void UpdateRegisterMap();
 
     // @description     : Returns the current status struct
     // @returns         : Current status struct
-    vs1035b_status_t GetStatus();
+    vs1053b_status_t GetStatus();
 
     uint32_t GetPlaybackPosition();
 
 private:
 
     // Stores a struct of status information to be transmitted
-    vs1035b_status_t Status;
+    vs1053b_status_t Status;
 
     // @description     : Reads the endFillByte parameter from the device
     // @returns         : The endFillByte
@@ -214,6 +192,11 @@ private:
     // @description     : Pull XCS line to select or deselect the device
     // @param on        : True for pull line low + select device, False for pull line high + deselect device
     inline void SwitchChipSelect(bool on);
+
+    // @description     : Checks if the supplied address is a valid address to access
+    // @param address   : The address to check
+    // @returns         : True for valid, false for invalid
+    inline bool IsValidAddress(uint16_t address);
 
     // @description     : Change a single bit of one of the SCI registers
     // @param register  : Specifies which SCI register
