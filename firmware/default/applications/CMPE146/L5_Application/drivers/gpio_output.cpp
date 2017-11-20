@@ -7,6 +7,9 @@ void GpioOutput::SetValue(gpio_value_t value)
         case HIGH: GpioPtr->FIOSET |= (1 << Pin); break;
         case LOW:  GpioPtr->FIOCLR |= (1 << Pin); break;
     }
+
+    // Store last set value
+    Value = value;
 }
 
 void GpioOutput::SetHigh()
@@ -22,4 +25,9 @@ void GpioOutput::SetLow()
 void GpioOutput::Toggle()
 {
     ( IsHigh() ) ? ( SetLow() ) : ( SetHigh() );
+}
+
+bool GpioOutput::GetValue()
+{
+    return Value;
 }

@@ -37,4 +37,5 @@ protected:
 
 	LPC_GPIO_Typedef 	*GpioPtr;
 	gpio_pin_t 			Pin;
+	bool 				Value;
 };

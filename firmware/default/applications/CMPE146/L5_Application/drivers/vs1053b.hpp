@@ -53,6 +53,7 @@ typedef struct
     bool fast_forward_mode;
     bool rewind_mode;
     bool low_power_mode;
+    bool gpios_initialized;
 } __attribute__((packed)) vs1053b_status_t;
 
 typedef struct
@@ -90,13 +91,25 @@ typedef struct
     } reg0;
 } __attribute__((packed)) mp3_header_t;
 
+typedef struct
+{
+    gpio_port_t port_reset;
+    gpio_port_t port_dreq;
+    gpio_port_t port_xcs;
+    gpio_port_t port_xdcs;
+    uint8_t     pin_reset;
+    uint8_t     pin_dreq;
+    uint8_t     pin_xcs;
+    uint8_t     pin_xdcs;
+} __attribute__((packed)) vs1053b_gpio_init_t;
+
 
 class VS1053b
 {
 public:
 
     // @description     : Constructor, initializes the device
-    VS1053b();
+    VS1053b(vs1053b_gpio_init_t init);
 
     // @description     : Sends a single byte to the device
     // @param address   : Address of register to write the data to
@@ -221,6 +234,13 @@ public:
     uint32_t GetPlaybackPosition();
 
 private:
+
+    // Pins for VS1053B interfacing
+    // Must be initialized before using driver
+    GpioOutput RESET;
+    GpioInput  DREQ;
+    GpioOutput XCS;
+    GpioOutput XDCS;
 
     // Stores a struct of the current mp3's header information
     mp3_header_t Header;

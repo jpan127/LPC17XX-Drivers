@@ -22,4 +22,7 @@ public:
 
     // Toggles
     void Toggle();
+
+    // Get last set value
+    bool GetValue();
 };

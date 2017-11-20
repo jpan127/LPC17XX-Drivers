@@ -24,9 +24,59 @@ static SCI_reg_t RegisterMap[] = {
 };
 
 static vs1053b_status_t StatusMap[] = {
-    .FastFowardMode = false,
-    .RewindMode     = false,
+    .fast_forward_mode  = false,
+    .rewind_mode        = false,
+    .low_power_mode     = false,
+    .gpios_initialized  = false,
 };
+
+inline bool SetXDCS(bool value)
+{
+    // Can't set XDCS low when XCS is also low
+    if (!GetXCS() && !value) 
+    {
+        return false;
+    }
+    else 
+    {
+        XDCS.SetValue(value);
+        return value;
+    }
+}
+
+inline bool GetXDCS()
+{
+    return XDCS.GetValue();
+}
+
+inline bool SetXCS(bool value)
+{
+    // Can't set XCS low when XDCS is also low
+    if (!GetXDCS() && !value) 
+    {
+        return false;
+    }
+    else 
+    {
+        XDCS.SetValue(value);
+        return value;
+    }
+}
+
+inline bool GetXCS()
+{
+    return XCS.GetValue();
+}
+
+inline bool GetDREQ()
+{
+    return DREQ.IsHigh();
+}
+
+inline void SetReset(bool value)
+{
+    RESET.SetValue(value);
+}
 
 inline bool VS1053b::IsValidAddress(uint16_t address)
 {
@@ -50,17 +100,17 @@ inline bool VS1053b::IsValidAddress(uint16_t address)
 
 inline bool UpdateRemoteRegister(SCI_reg reg)
 {
-    return TransferStreamData(RegisterMap[reg].reg_num, &RegisterMap[reg].reg_value, 1);
-}
+    // Split reg_value into 2-bytes
+    uint8_t reg_value[] = { RegisterMap[reg].reg_value >> 8, RegisterMap[reg].reg_value & 0xFF };
 
-inline bool GetDreqPinValue()
-{
-    return Dreq.IsHigh();
-}
-
-inline void SetResetPinValue(bool value)
-{
-    Reset.SetValue(value);
+    if (RegisterMap[reg].can_write)
+    {
+        return TransferStreamData(RegisterMap[reg].reg_num, reg_value, 2);
+    }
+    else
+    {
+        return false;
+    }
 }
 
 inline void BlockMicroSeconds(uint16_t microseconds)
@@ -71,26 +121,53 @@ inline void BlockMicroSeconds(uint16_t microseconds)
     while (swatch.getElapsedTime() < microseconds);
 }
 
-VS1053b::VS1053b()
+VS1053b::VS1053b(vs1053b_gpio_init_t init) :    RESET(init.port_reset, init.pin_reset),
+                                                DREQ(init.port_dreq,   init.pin_dreq),
+                                                XCS(init.port_xcs,     init.pin_xcs),
+                                                XDCS(init.port_xdcs,   init.pin_xdcs)
 {
-    // Make SPI a singleton
-    // Spi spi(SPI_PORT0, SPI_MASTER, GPIO_PORT0, SPI_CS);
+    // Initialize SPI
+    SPI.Initialize();
+
+    // Initialize the system and registers
+    SystemInit();
 
     // Update all the register values
     UpdateRegisterMap();
-
-    // Update all the statuses
-    UpdateStatusMap();
 }
 
-bool VS1053b::TransferSingleData(uint16_t address, uint16_t data)
+void SystemInit()
+{
+    SetReset(true);
+
+    uint16_t mode_default_state = 0;
+    mode_default_state |= (1 << 1);         // Allow mpeg layers 1 + 2
+    mode_default_state |= (1 << 15);        // Dviide clock by 2 = 12MHz
+
+    uint16_t bass_default_state = 0x0000;   // Turn off bass enhancement and treble control
+
+    uint16_t clock_default_state = 0x9000;  // Reccommended clock rate
+
+    uint16_t volume_default_state = 0xFEFE; // Completely silent
+
+    RegisterMap[MODE].reg_value   = mode_default_state;
+    RegisterMap[BASS].reg_value   = bass_default_state;
+    RegisterMap[CLOCKF].reg_value = clock_default_state;
+    RegisterMap[VOL].reg_value    = volume_default_state;
+
+    UpdateRemoteRegister(MODE);
+    UpdateRemoteRegister(BASS);
+    UpdateRemoteRegister(CLOCKF);
+    UpdateRemoteRegister(VOL);
+}
+
+bool VS1053b::TransferSingleData(uint16_t address, uint8_t data)
 {
     if (IsValidAddress(address))
     {
         SPI.SendByte(OPCODE_WRITE);
         SPI.SendByte(address);
-        SPI.SendByte(data >> 8);
-        SPI.SendByte(data & 0xFF);
+        SPI.SendByte(data);
         return true;
     }
     else
@@ -99,7 +176,7 @@ bool VS1053b::TransferSingleData(uint16_t address, uint16_t data)
     }
 }
 
-bool VS1053b::ReceiveSingleData(uint16_t address, uint16_t *data)
+bool VS1053b::ReceiveSingleData(uint16_t address, uint8_t *data)
 {
     *data = 0;
 
@@ -107,8 +184,7 @@ bool VS1053b::ReceiveSingleData(uint16_t address, uint16_t *data)
     {
         SPI.SendByte(OPCODE_READ);
         SPI.SendByte(address);
-        *data |= Spi.ReceiveByte() << 0;
-        *data |= Spi.ReceiveByte() << 8;
+        *data = Spi.ReceiveByte();
         return true;
     }
     else
@@ -117,7 +193,7 @@ bool VS1053b::ReceiveSingleData(uint16_t address, uint16_t *data)
     }
 }
 
-bool VS1053b::TransferStreamData(uint16_t address, uint16_t *data, uint16_t size)
+bool VS1053b::TransferStreamData(uint16_t address, uint8_t *data, uint16_t size)
 {
     if (IsValidAddress(address))
     {
@@ -142,7 +218,34 @@ bool VS1053b::TransferStreamData(uint16_t address, uint16_t *data, uint16_t size
     }
 }
 
-uint16_t VS1053b::ReceiveStreamData(uint16_t address, uint16_t *data, uint16_t size)
+bool VS1053b::SendEndFillByte(uint16_t address, uint16_t size)
+{
+    uint8_t end_fill_byte = GetEndFillByte();
+
+    if (IsValidAddress(address))
+    {
+        XDCS.SetLow();
+        for (int i=0; i<size; i++)
+        {
+            TransferSingleData(address + i, end_fill_byte);
+            
+            // Toggle XDCS every 32 bytes
+            if (i > 0 && i%32 == 0)
+            {
+                XDCS.SetHigh();
+                XDCS.SetLow();
+            }
+        }
+        XDCS.SetHigh();
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+uint16_t VS1053b::ReceiveStreamData(uint16_t address, uint8_t *data, uint16_t size)
 {
     memset(data, 0, sizeof(uint16_t) * size);
 
@@ -448,13 +551,13 @@ void HardwareReset()
     SetResetPinValue(true);
 
     // Wait for 3 us at a time until DREQ goes high
-    while (!GetDreqPinValue())
+    while (!GetDREQ())
     {
         BlockMicroSeconds(3);
     }
 }
 
-void SoftwareReset()
+bool SoftwareReset()
 {
     UpdateLocalRegister(MODE);
 
@@ -462,15 +565,26 @@ void SoftwareReset()
     RegisterMap[MODE].reg_value |= (1 << 2);
     UpdateRemoteRegister(MODE);
 
+    uint16_t elapsed_us = 0;
     // Wait for 3 us at a time until DREQ goes high
-    while (!GetDreqPinValue())
+    while (!GetDREQ())
     {
         BlockMicroSeconds(3);
+        elapsed_us += 3;
+
+        // Should not take more than 1 millisecond
+        if (elapsed_us > 1000)
+        {
+            HardwareReset();
+            return false;
+        }
     }
 
-    // Unset reset bit
-    RegisterMap[MODE].reg_value &= ~(1 << 2);
-    UpdateRemoteRegister(MODE);
+    // Re-initialize registers
+    SystemInit();
+
+    // Reset bit is cleared automatically
+    return true;
 }
 
 void SetLowPowerMode(bool on)
@@ -497,7 +611,6 @@ void SetLowPowerMode(bool on)
     }
     else
     {
-
         // If in low power mode
         if (Status.low_power_mode)
         {
@@ -520,5 +633,16 @@ void SetLowPowerMode(bool on)
 
 void StartPlayback(uint8_t *mp3, uint32_t size)
 {
+    // Send 2 dummy bytes to SDI
+    static const uint8_t dummy_short[] = { 0x00, 0x00 };
+    TransferStreamData(address, &dummy_short, 2);
+
+    // Send mp3 file
     TransferStreamData(address, mp3, size);
+
+    // To signal the end of the mp3 file need to set 2048 bytes of EndFillByte
+    SendEndFillByte(address, 2048);
+
+    // Wait 50 ms buffer time between playbacks
+    vTaskDelay(50 / portTICK_PERIOD_MS);
 }
