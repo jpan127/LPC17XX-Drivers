@@ -1,3 +1,4 @@
+#include <stop_watch.hpp>
 #include "L5_Application/drivers/spi.hpp"
 #include "L5_Application/drivers/i2c.hpp"
 
@@ -24,7 +25,7 @@ typedef struct
     uint16_t reset_value;
     uint16_t clock_cycles;
     uint16_t reg_value;
-} SCI_reg_t;
+} __attribute__((packed)) SCI_reg_t;
 
 typedef enum 
 {
@@ -49,10 +50,45 @@ typedef enum
 
 typedef struct 
 {
-    bool FastFowardMode;
-    bool RewindMode;
+    bool fast_forward_mode;
+    bool rewind_mode;
+    bool low_power_mode;
+} __attribute__((packed)) vs1053b_status_t;
 
-} vs1053b_status_t;
+typedef struct
+{
+    // HDAT1
+    bool     stream_valid;
+    uint8_t  id;
+    uint8_t  layer;
+    bool     protect_bit;
+    // HDAT0
+    uint32_t bit_rate;
+    uint16_t sample_rate;
+    bool     pad_bit;
+    uint8_t  mode;
+
+    struct
+    {
+        uint8_t protect_bit : 1,
+        uint8_t layer       : 2,
+        uint8_t id          : 2,
+        uint8_t sync_word   : 11
+    } reg1;
+
+    struct
+    {
+        uint8_t emphasis    : 2,
+        uint8_t original    : 1,
+        uint8_t copyright   : 1,
+        uint8_t extension   : 2,
+        uint8_t mode        : 2,
+        uint8_t private_bit : 1,
+        uint8_t pad_bit     : 1,
+        uint8_t sample_rate : 2,
+        uint8_t bit_rate    : 4
+    } reg0;
+} __attribute__((packed)) mp3_header_t;
 
 
 class VS1053b
@@ -109,18 +145,18 @@ public:
     uint16_t GetStatus();
 
     // @description     : Sets the base register value
-    // @param value     : The value of the base register, possible values from 0x0 to 0xF
+    // @param amplitude : The value of the register, possible values from 0x0 to 0xF
+    // @param freq_limit: The lower frequency
     void SetBaseEnhancement(uint8_t amplitude, uint8_t freq_limit);
 
     // @description     : Sets the treble register value
-    // @param value     : The value of the register, possible values from 0x0 to 0xF
-    // @param upper_freq: The upper frequency
-    // @param lower_freq: The lower frequency
+    // @param amplitude : The value of the register, possible values from 0x0 to 0xF
+    // @param freq_limit: The lower frequency
     void SetTrebleControl(uint8_t amplitude, uint8_t freq_limit);
 
     // @description     : Read the current decoding time register
-    // @returns         : The current decoding time
-    uint32_t GetCurrentDecodedTime();
+    // @returns         : The current decoding time in seconds
+    uint16_t GetCurrentDecodedTime();
 
     // @description       : Sets the sample rate register
     // @param sample_rate : The sample rate to set to, possible values range from 0 to 48k
@@ -134,6 +170,12 @@ public:
     // @param left_vol  : Volume of the left speaker
     // @param right_vol : Volume of the right speaker
     void SetVolume(uint16_t left_vol, uint16_t right_vol);
+
+    void UpdateHeaderInformation();
+
+    mp3_header_t GetHeaderInformation();
+
+    void GetBitRate();
 
     // @description     : Perform a hardware reset
     void HardwareReset();
@@ -180,13 +222,15 @@ public:
 
 private:
 
+    // Stores a struct of the current mp3's header information
+    mp3_header_t Header;
+
     // Stores a struct of status information to be transmitted
     vs1053b_status_t Status;
 
     // @description     : Reads the endFillByte parameter from the device
     // @returns         : The endFillByte
     uint8_t GetEndFillByte();
-
 
     // @description     : Requests if the device is capable of receiving data
     // @returns         : True for available, false for not available
@@ -201,10 +245,16 @@ private:
     // @returns         : True for valid, false for invalid
     inline bool IsValidAddress(uint16_t address);
 
+    inline bool UpdateLocalRegister(SCI_reg reg);
+
+    inline bool UpdateRemoteRegister(SCI_reg reg);
+
     // @description     : Change a single bit of one of the SCI registers
     // @param register  : Specifies which SCI register
     // @param bit       : Specifies which bit of the SCI register
     // @param bit_value : Specifies value of bit to set, true for 1, false for 0
     // @returns         : True for successfully set, false for unsuccessful
     bool ChangeSCIRegister(SCI_reg register, uint8_t bit, bool bit_value);
+
+    inline void BlockMicroSeconds(uint16_t microseconds);
 };
