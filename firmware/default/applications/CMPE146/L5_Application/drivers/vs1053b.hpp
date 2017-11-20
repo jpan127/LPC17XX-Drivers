@@ -65,12 +65,14 @@ public:
     // @description     : Sends a single byte to the device
     // @param address   : Address of register to write the data to
     // @param data      : The data byte to write
-    void TransferSingleData(uint16_t address, uint16_t data);
+    // @returns         : True for valid address, false for invalid
+    bool TransferSingleData(uint16_t address, uint16_t data);
 
     // @description     : Receives a single byte from the device
     // @param address   : Address of register to read the data from
     // @param data      : The data byte returned
-    void ReceiveSingleData(uint16_t address, uint16_t *data);
+    // @returns         : True for valid address, false for invalid
+    bool ReceiveSingleData(uint16_t address, uint16_t *data);
 
     // @description     : Sends an array of bytes to the device
     // @param address   : The starting address of registers to write the data to
@@ -87,7 +89,8 @@ public:
     uint16_t ReceiveStreamData(uint16_t address, uint16_t *data, uint16_t size);
 
     // @description     : Cancels the decoding if in the process of decoding
-    void CancelDecoding();
+    // @returns         : True for successful, false for unsuccessful
+    bool CancelDecoding();
 
     // @description     : Sets the ear speaking procecssing mode
     // @param mode      : Either off, minimal, normal, or extreme
@@ -107,13 +110,13 @@ public:
 
     // @description     : Sets the base register value
     // @param value     : The value of the base register, possible values from 0x0 to 0xF
-    void SetBaseEnhancement(uint8_t value);
+    void SetBaseEnhancement(uint8_t amplitude, uint8_t freq_limit);
 
     // @description     : Sets the treble register value
     // @param value     : The value of the register, possible values from 0x0 to 0xF
     // @param upper_freq: The upper frequency
     // @param lower_freq: The lower frequency
-    void SetTrebleControl(uint8_t value, uint8_t upper_freq, uint8_t lower_freq);
+    void SetTrebleControl(uint8_t amplitude, uint8_t freq_limit);
 
     // @description     : Read the current decoding time register
     // @returns         : The current decoding time
