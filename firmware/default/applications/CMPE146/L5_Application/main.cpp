@@ -1,22 +1,18 @@
 #include "tasks.hpp"                                    // terminalTask
-#include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
-#include "L5_Application/labs/UartTask.hpp"             // Lab2
-#include "L5_Application/labs/AT45QueryTask.cpp"        // Lab3
-#include "L5_Application/labs/GpioInterruptTask.hpp"    // Lab4
-#include "L5_Application/labs/I2CSlaveTask.hpp"         // Lab5
-#include "L5_Application/labs/I2CMasterTask.hpp"        // Lab5
-#include "L5_Application/labs/OrientationTask.hpp"      // Lab6
-#include "L5_Application/labs/PriorityTasks.hpp"        // Lab6
-#include "L5_Application/labs/ProducerConsumerTasks.cpp" // Lab7
-// #include "infrared.cpp"
-// #include "bluetooth.cpp"
-// #include "motor.hpp"
+// #include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
+// #include "L5_Application/labs/UartTask.hpp"             // Lab2
+// #include "L5_Application/labs/AT45QueryTask.cpp"        // Lab3
+// #include "L5_Application/labs/GpioInterruptTask.hpp"    // Lab4
+// #include "L5_Application/labs/I2CSlaveTask.hpp"         // Lab5
+// #include "L5_Application/labs/I2CMasterTask.hpp"        // Lab5
+// #include "L5_Application/labs/OrientationTask.hpp"      // Lab6
+// #include "L5_Application/labs/PriorityTasks.hpp"        // Lab6
+// #include "L5_Application/labs/ProducerConsumerTasks.cpp" // Lab7
+#include "MP3Task.hpp"
 
 
 int main(void)
-{
-    LedsClearAll();
-    
+{    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     /* Lab 1 | GPIO | VERIFIED */
@@ -81,11 +77,30 @@ int main(void)
 
     /* Lab 7 | PRODUCER/CONSUMER/WATCHDOG | Finished everything except reading files from SD card */
 
-    scheduler_add_task(new ProducerTask(PRIORITY_MEDIUM));
-    scheduler_add_task(new ConsumerTask(PRIORITY_MEDIUM));
-    scheduler_add_task(new WatchdogTask(PRIORITY_HIGH));
+    // scheduler_add_task(new ProducerTask(PRIORITY_MEDIUM));
+    // scheduler_add_task(new ConsumerTask(PRIORITY_MEDIUM));
+    // scheduler_add_task(new WatchdogTask(PRIORITY_HIGH));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    const vs1053b_gpio_init_t gpio_init = {
+        .port_reset = GPIO_PORT0,
+        .port_dreq  = GPIO_PORT0,
+        .port_xcs   = GPIO_PORT0,
+        .port_xdcs  = GPIO_PORT0,
+        .pin_reset  = 30,
+        .pin_dreq   = 29,
+        .pin_xcs    = 1,
+        .pin_xdcs   = 0,
+    };
+
+    // #define SPI_PORT    (SPI_PORT0)
+    // #define SPI_CS      (16)
+    // #define SPI_SCK     (15)
+    // #define SPI_MISO    (17)
+    // #define SPI_MOSI    (18)
+
+    scheduler_add_task(new MP3Task(PRIORITY_MEDIUM, gpio_init));
 
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
     scheduler_start();
