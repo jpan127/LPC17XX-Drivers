@@ -46,43 +46,52 @@ VS1053b::VS1053b(vs1053b_gpio_init_t init) :    DREQ(init.port_dreq,   init.pin_
 
 void VS1053b::SystemInit()
 {
-    // Pins initial state    
+    // Reset device
+    printf("[VS1053b::SystemInit] Resetting device...\n");
+    SetReset(false);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     SetReset(true);
+    printf("[VS1053b::SystemInit] Device reset.\n");
+
+    // Chip selects should start high
     if (!SetXCS(true))
     {
-        printf("[VS1053b::SystemInit] Failed to set XCS to true at init.\n");
+        printf("[VS1053b::SystemInit] Failed to set XCS to HIGH at init.\n");
     }
     if (!SetXDCS(true))
     {
-        printf("[VS1053b::SystemInit] Failed to set XDCS to true at init.\n");
+        printf("[VS1053b::SystemInit] Failed to set XDCS to HIGH at init.\n");
     }
 
     // Check if booted in RTMIDI mode which causes issues with MP3 not playing
     // Fix : http://www.bajdi.com/lcsoft-vs1053-mp3-module/#comment-33773
-    // UpdateLocalRegister(AUDATA);
-    // if (44100 == RegisterMap[AUDATA].reg_value || 44101 == RegisterMap[AUDATA].reg_value)
-    // {
-    //     printf("Switching to MP3 mode.\n");
-    //     // Switch to MP3 mode if in RTMIDI mode
-    //     RegisterMap[WRAMADDR].reg_value = 0xC017;
-    //     RegisterMap[WRAM].reg_value     = 3;
-    //     UpdateRemoteRegister(WRAMADDR);
-    //     UpdateRemoteRegister(WRAM);
-    //     RegisterMap[WRAMADDR].reg_value = 0xC019;
-    //     RegisterMap[WRAM].reg_value     = 0;
-    //     UpdateRemoteRegister(WRAMADDR);
-    //     UpdateRemoteRegister(WRAM);
+    UpdateLocalRegister(AUDATA);
+    if (44100 == RegisterMap[AUDATA].reg_value || 44101 == RegisterMap[AUDATA].reg_value)
+    {
+        printf("[VS1053b::SystemInit] Defaulted to MIDI mode. Switching to MP3 mode.\n");
+        // Switch to MP3 mode if in RTMIDI mode
+        RegisterMap[WRAMADDR].reg_value = 0xC017;
+        RegisterMap[WRAM].reg_value     = 3;
+        UpdateRemoteRegister(WRAMADDR);
+        UpdateRemoteRegister(WRAM);
+        RegisterMap[WRAMADDR].reg_value = 0xC019;
+        RegisterMap[WRAM].reg_value     = 0;
+        UpdateRemoteRegister(WRAMADDR);
+        UpdateRemoteRegister(WRAM);
 
-    //     // Wait a little to make sure it was written
-    //     vTaskDelay(100 / portTICK_PERIOD_MS);
-    //     // Software reset to boot into MP3 mode
-    //     SoftwareReset();
-    // }
+        // Wait a little to make sure it was written
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        // Software reset to boot into MP3 mode
+        SoftwareReset();
+    }
+
+    UpdateLocalRegister(STATUS);
+    printf("[VS1053b::SystemInit] Initial status: %04X\n", RegisterMap[STATUS].reg_value);
 
     uint16_t mode_default_state   = 0x8002;     // Allow mpeg layers 1 + 2, divide clock by 2 = 12MHz
     uint16_t bass_default_state   = 0x0000;     // Turn off bass enhancement and treble control
     uint16_t clock_default_state  = 0x9000;     // Recommended clock rate
-    uint16_t volume_default_state = 0xFEFE;     // Completely silent
+    uint16_t volume_default_state = 0x2000;     // Half volume
 
     RegisterMap[MODE].reg_value   = mode_default_state;
     RegisterMap[BASS].reg_value   = bass_default_state;
@@ -94,8 +103,15 @@ void VS1053b::SystemInit()
     UpdateRemoteRegister(CLOCKF);
     UpdateRemoteRegister(VOL);
 
+    printf("[VS1053b::SystemInit] Updating device registers with default settings.\n");
+
     // Update local register values
-    UpdateRegisterMap();
+    if (!UpdateRegisterMap())
+    {
+        printf("[VS1053b::SystemInit] Failed to update register map.\n");
+    }
+
+    printf("[VS1053b::SystemInit] System initialization complete.\n");
 }
 
 vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
@@ -214,6 +230,48 @@ bool VS1053b::SoftwareReset()
 
     // Reset bit is cleared automatically
     return true;
+}
+
+void VS1053b::PrintDebugInformation()
+{
+    if (!UpdateRegisterMap())
+    {
+        printf("[VS1053b::PrintDebugInformation] Failed to update register map.\n");
+    }
+    UpdateHeaderInformation();
+
+    printf("------------------------------------------------------\n");
+    printf("Sample Rate     : %d\n", RegisterMap[AUDATA].reg_value);
+    printf("Decoded Time    : %d\n", RegisterMap[DECODE_TIME].reg_value);
+    printf("------------------------------------------------------\n");
+    printf("Header Information\n");
+    printf("------------------------------------------------------\n");
+    printf("stream_valid    : %d\n", Header.stream_valid);
+    printf("id              : %d\n", Header.id);
+    printf("layer           : %d\n", Header.layer);
+    printf("protect_bit     : %d\n", Header.protect_bit);
+    printf("bit_rate        : %lu\n", Header.bit_rate);
+    printf("sample_rate     : %d\n", Header.sample_rate);
+    printf("pad_bit         : %d\n", Header.pad_bit);
+    printf("mode            : %d\n", Header.mode);
+    printf("------------------------------------------------------\n");
+    printf("MODE            : %04X\n", RegisterMap[MODE].reg_value);
+    printf("STATUS          : %04X\n", RegisterMap[STATUS].reg_value);
+    printf("BASS            : %04X\n", RegisterMap[BASS].reg_value);
+    printf("CLOCKF          : %04X\n", RegisterMap[CLOCKF].reg_value);
+    printf("DECODE_TIME     : %04X\n", RegisterMap[DECODE_TIME].reg_value);
+    printf("AUDATA          : %04X\n", RegisterMap[AUDATA].reg_value);
+    printf("WRAM            : %04X\n", RegisterMap[WRAM].reg_value);
+    printf("WRAMADDR        : %04X\n", RegisterMap[WRAMADDR].reg_value);
+    printf("HDAT0           : %04X\n", RegisterMap[HDAT0].reg_value);
+    printf("HDAT1           : %04X\n", RegisterMap[HDAT1].reg_value);
+    printf("AIADDR          : %04X\n", RegisterMap[AIADDR].reg_value);
+    printf("VOL             : %04X\n", RegisterMap[VOL].reg_value);
+    printf("AICTRL0         : %04X\n", RegisterMap[AICTRL0].reg_value);
+    printf("AICTRL1         : %04X\n", RegisterMap[AICTRL1].reg_value);
+    printf("AICTRL2         : %04X\n", RegisterMap[AICTRL2].reg_value);
+    printf("AICTRL3         : %04X\n", RegisterMap[AICTRL3].reg_value);
+    printf("------------------------------------------------------\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -383,28 +441,28 @@ void VS1053b::SetLowPowerMode(bool on)
 }
 
 // May need rethinking
-// void VS1053b::PlayEntireSong(uint8_t *mp3, uint32_t size)
-// {
-//     // Clear decode time
-//     ClearDecodeTime();
+    // void VS1053b::PlayEntireSong(uint8_t *mp3, uint32_t size)
+    // {
+    //     // Clear decode time
+    //     ClearDecodeTime();
 
-//     // Send 2 dummy bytes to SDI
-//     static const uint8_t dummy_short[] = { 0x00, 0x00 };
-//     TransferData(&dummy_short, 2);
+    //     // Send 2 dummy bytes to SDI
+    //     static const uint8_t dummy_short[] = { 0x00, 0x00 };
+    //     TransferData(&dummy_short, 2);
 
-//     Status.playing = true;
+    //     Status.playing = true;
 
-//     // Send mp3 file
-//     TransferData(mp3, size);
+    //     // Send mp3 file
+    //     TransferData(mp3, size);
 
-//     // To signal the end of the mp3 file need to set 2052 bytes of EndFillByte
-//     SendEndFillByte(2052);
+    //     // To signal the end of the mp3 file need to set 2052 bytes of EndFillByte
+    //     SendEndFillByte(2052);
 
-//     // Wait 50 ms buffer time between playbacks
-//     vTaskDelay(50 / portTICK_PERIOD_MS);
+    //     // Wait 50 ms buffer time between playbacks
+    //     vTaskDelay(50 / portTICK_PERIOD_MS);
 
-//     Status.playing = false;
-// }
+    //     Status.playing = false;
+    // }
 
 vs1053b_transfer_status_E VS1053b::PlaySegment(uint8_t *mp3, uint32_t size, bool last_segment)
 {
@@ -708,8 +766,8 @@ inline bool VS1053b::UpdateLocalRegister(SCI_reg reg)
         SPI.SendByte(reg);
         data |= SPI.ReceiveByte() << 8;
         data |= SPI.ReceiveByte();
+        RegisterMap[reg].reg_value = data;
         SetXCS(true);
-
         return true;
     }
 }
@@ -884,8 +942,10 @@ bool VS1053b::UpdateRegisterMap()
     {
         if (!UpdateLocalRegister((SCI_reg)reg))
         {
+            printf("[VS1053b::UpdateRegisterMap] Failed at reg %d\n", reg);
             return false;
         }
+        vTaskDelay(1 / portTICK_PERIOD_MS);
     }
 
     return true;

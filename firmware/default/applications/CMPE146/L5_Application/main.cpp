@@ -75,7 +75,7 @@ int main(void)
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /* Lab 7 | PRODUCER/CONSUMER/WATCHDOG | Finished everything except reading files from SD card */
+    /* Lab 7 | PRODUCER/CONSUMER/WATCHDOG | VERIFIED */
 
     // scheduler_add_task(new ProducerTask(PRIORITY_MEDIUM));
     // scheduler_add_task(new ConsumerTask(PRIORITY_MEDIUM));
@@ -83,16 +83,16 @@ int main(void)
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    const vs1053b_gpio_init_t gpio_init = {
-        .port_reset = GPIO_PORT0,
-        .port_dreq  = GPIO_PORT0,
-        .port_xcs   = GPIO_PORT0,
-        .port_xdcs  = GPIO_PORT0,
-        .pin_reset  = 30,
-        .pin_dreq   = 29,
-        .pin_xcs    = 1,
-        .pin_xdcs   = 0,
-    };
+    // const vs1053b_gpio_init_t gpio_init = {
+    //     .port_reset = GPIO_PORT0,
+    //     .port_dreq  = GPIO_PORT0,
+    //     .port_xcs   = GPIO_PORT0,
+    //     .port_xdcs  = GPIO_PORT0,
+    //     .pin_reset  = 30,
+    //     .pin_dreq   = 29,
+    //     .pin_xcs    = 1,
+    //     .pin_xdcs   = 0,
+    // };
 
     // #define SPI_PORT    (SPI_PORT0)
     // #define SPI_CS      (16)
@@ -100,7 +100,8 @@ int main(void)
     // #define SPI_MISO    (17)
     // #define SPI_MOSI    (18)
 
-    scheduler_add_task(new MP3Task(PRIORITY_MEDIUM, gpio_init));
+    // scheduler_add_task(new MP3Task(PRIORITY_MEDIUM, gpio_init));
+    xTaskCreate(MP3Task, "MP3Task", 2048, NULL, PRIORITY_MEDIUM, NULL);
 
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
     scheduler_start();
