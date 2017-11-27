@@ -101,9 +101,9 @@ void VS1053b::SystemInit()
 vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
 {
     // Wait until DREQ goes high
-    if (!WaitForDREQ())
+    if (!WaitForDREQ(100000))
     {
-        printf("[VS1053b::TransferData] Failed to transfer data timeout of 10ms.\n");
+        printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000us.\n");
         return TRANSFER_FAILED;
     }
 
@@ -138,9 +138,9 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
             }
             
             // Wait until DREQ goes high
-            if (!WaitForDREQ())
+            if (!WaitForDREQ(100000))
             {
-                printf("[VS1053b::TransferData] Failed to transfer data timeout of 10ms.\n");
+                printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
                 return TRANSFER_FAILED;
             }
         }
@@ -157,9 +157,9 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
                 XDCS.SetHigh();
                 
                 // Wait until DREQ goes high
-                if (!WaitForDREQ())
+                if (!WaitForDREQ(100000))
                 {
-                    printf("[VS1053b::TransferData] Failed to transfer data timeout of 10ms.\n");
+                    printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
                     return TRANSFER_FAILED;
                 }
             }
@@ -690,9 +690,9 @@ inline bool VS1053b::UpdateLocalRegister(SCI_reg reg)
     uint16_t data = 0;
 
     // Wait until DREQ goes high
-    if (!WaitForDREQ())
+    if (!WaitForDREQ(100000))
     {
-        printf("[VS1053b::UpdateLocalRegister] Failed to update register: %d, DREQ timeout of 10ms.\n", reg);
+        printf("[VS1053b::UpdateLocalRegister] Failed to update register: %d, DREQ timeout of 100000.\n", reg);
         return false;
     }
 
@@ -736,16 +736,14 @@ inline void VS1053b::ChangeSCIRegister(SCI_reg reg, uint8_t bit, bool bit_value)
 //                                       PRIVATE FUNCTIONS                                        //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool VS1053b::WaitForDREQ()
+bool VS1053b::WaitForDREQ(uint32_t timeout_us)
 {
-    uint32_t timeout_us = 0;
-
     // Wait until DREQ goes high
     while (!DeviceReady())
     {
-        BlockMicroSeconds(10);
-        timeout_us += 10;
-        if (timeout_us == (10 * 1000))
+        BlockMicroSeconds(100);
+        timeout_us -= 100;
+        if (timeout_us == 0)
         {
             return false;
         }
@@ -758,9 +756,9 @@ uint16_t VS1053b::ReadRam(uint16_t address)
     uint16_t data = 0;
 
     // Wait until DREQ goes high
-    if (!WaitForDREQ())
+    if (!WaitForDREQ(100000))
     {
-        printf("[VS1053b::ReadRam] Failed to read RAM[%d], timeout of 10ms.\n", address);
+        printf("[VS1053b::ReadRam] Failed to read RAM[%d], timeout of 100000.\n", address);
         return 0;
     }
 
@@ -772,9 +770,9 @@ uint16_t VS1053b::ReadRam(uint16_t address)
     SPI.SendByte(address);
 
     // Wait until DREQ goes high
-    if (!WaitForDREQ())
+    if (!WaitForDREQ(100000))
     {
-        printf("[VS1053b::ReadRam] Failed to read RAM[%d], timeout of 10ms.\n", address);
+        printf("[VS1053b::ReadRam] Failed to read RAM[%d], timeout of 100000.\n", address);
         return 0;
     }
 
@@ -837,9 +835,9 @@ float VS1053b::ClockCyclesToMicroSeconds(uint16_t clock_cycles, bool is_clockf)
 bool VS1053b::TransferSCICommand(SCI_reg reg)
 {
     // Wait until DREQ goes high
-    if (!WaitForDREQ())
+    if (!WaitForDREQ(100000))
     {
-        printf("[VS1053b::TransferSCICommand] Failed to update register: %d, DREQ timeout of 10ms.\n", reg);
+        printf("[VS1053b::TransferSCICommand] Failed to update register: %d, DREQ timeout of 100000us.\n", reg);
         return false;
     }
 

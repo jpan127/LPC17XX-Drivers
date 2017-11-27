@@ -329,7 +329,7 @@ private:
     //                                        PRIVATE FUNCTIONS                                       //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool WaitForDREQ();
+    bool WaitForDREQ(uint32_t timeout_us=1000);
 
     // @description     : Read a register from RAM that is not a command register
     // @param address   : Address of register to read the data from
