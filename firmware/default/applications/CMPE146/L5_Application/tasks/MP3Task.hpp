@@ -1,5 +1,6 @@
 #pragma once
 #include <ff.h>
+#include <ssp0.h>
 #include <scheduler_task.hpp>
 #include "L5_Application/drivers/vs1053b.hpp"
 #include "L5_Application/drivers/buttons.hpp"
@@ -91,7 +92,7 @@ static void HandleStateLogic()
             // Send segment to device
             status = MP3Player.PlaySegment((uint8_t*)Buffer, current_segment_size, last_segment);
 
-            printf("[MP3Task] Played segment %lu with %lu bytes.\n", segment_counter++, current_segment_size);
+            printf("[MP3Task] Played segment %lu with %d bytes.\n", segment_counter++, current_segment_size);
 
             // Handle transfer status
             if (TRANSFER_CANCELLED == status)
@@ -190,6 +191,8 @@ void MP3Task(void *p)
     Status.next_state = IDLE;
 
     memset(Buffer, 0, sizeof(Buffer));
+    ssp0_init(0);
+    ssp0_set_max_clock(2);
     MP3Player.SystemInit();
 
     while (1)

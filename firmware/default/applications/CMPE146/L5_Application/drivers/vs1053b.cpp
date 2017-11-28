@@ -5,6 +5,7 @@
 #include <tasks.hpp>
 #include "vs1053b.hpp"
 #include "spi.hpp"
+#include <ssp0.h>
 
 #define SPI     (Spi0::getInstance())
 
@@ -15,7 +16,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 VS1053b::VS1053b(vs1053b_gpio_init_t init) :    DREQ(init.port_dreq,   init.pin_dreq),
-                                                RESET(init.port_reset, init.pin_reset, false),
+                                                RESET(init.port_reset, init.pin_reset, true),
                                                 XCS(init.port_xcs,     init.pin_xcs, true),
                                                 XDCS(init.port_xdcs,   init.pin_xdcs, true)
 {
@@ -49,9 +50,17 @@ void VS1053b::SystemInit()
     // Reset device
     printf("[VS1053b::SystemInit] Resetting device...\n");
     SetReset(false);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(2 / portTICK_PERIOD_MS);
     SetReset(true);
-    printf("[VS1053b::SystemInit] Device reset.\n");
+    vTaskDelay(2 / portTICK_PERIOD_MS);
+    if (!SoftwareReset())
+    {
+        printf("[VS1053b::SystemInit] Software reset failed...\n");
+    }
+    else
+    {
+        printf("[VS1053b::SystemInit] Device reset.\n");
+    }
 
     // Chip selects should start high
     if (!SetXCS(true))
@@ -65,30 +74,30 @@ void VS1053b::SystemInit()
 
     // Check if booted in RTMIDI mode which causes issues with MP3 not playing
     // Fix : http://www.bajdi.com/lcsoft-vs1053-mp3-module/#comment-33773
-    UpdateLocalRegister(AUDATA);
-    if (44100 == RegisterMap[AUDATA].reg_value || 44101 == RegisterMap[AUDATA].reg_value)
-    {
-        printf("[VS1053b::SystemInit] Defaulted to MIDI mode. Switching to MP3 mode.\n");
-        // Switch to MP3 mode if in RTMIDI mode
-        RegisterMap[WRAMADDR].reg_value = 0xC017;
-        RegisterMap[WRAM].reg_value     = 3;
-        UpdateRemoteRegister(WRAMADDR);
-        UpdateRemoteRegister(WRAM);
-        RegisterMap[WRAMADDR].reg_value = 0xC019;
-        RegisterMap[WRAM].reg_value     = 0;
-        UpdateRemoteRegister(WRAMADDR);
-        UpdateRemoteRegister(WRAM);
+    // UpdateLocalRegister(AUDATA);
+    // if (44100 == RegisterMap[AUDATA].reg_value || 44101 == RegisterMap[AUDATA].reg_value)
+    // {
+    //     printf("[VS1053b::SystemInit] Defaulted to MIDI mode. Switching to MP3 mode.\n");
+    //     // Switch to MP3 mode if in RTMIDI mode
+    //     RegisterMap[WRAMADDR].reg_value = 0xC017;
+    //     RegisterMap[WRAM].reg_value     = 3;
+    //     UpdateRemoteRegister(WRAMADDR);
+    //     UpdateRemoteRegister(WRAM);
+    //     RegisterMap[WRAMADDR].reg_value = 0xC019;
+    //     RegisterMap[WRAM].reg_value     = 0;
+    //     UpdateRemoteRegister(WRAMADDR);
+    //     UpdateRemoteRegister(WRAM);
 
-        // Wait a little to make sure it was written
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        // Software reset to boot into MP3 mode
-        SoftwareReset();
-    }
+    //     // Wait a little to make sure it was written
+    //     vTaskDelay(100 / portTICK_PERIOD_MS);
+    //     // Software reset to boot into MP3 mode
+    //     SoftwareReset();
+    // }
 
     UpdateLocalRegister(STATUS);
     printf("[VS1053b::SystemInit] Initial status: %04X\n", RegisterMap[STATUS].reg_value);
 
-    uint16_t mode_default_state   = 0x8002;     // Allow mpeg layers 1 + 2, divide clock by 2 = 12MHz
+    uint16_t mode_default_state   = 0x4842;     // Allow mpeg layers 1 + 2, divide clock by 2 = 12MHz
     uint16_t bass_default_state   = 0x0000;     // Turn off bass enhancement and treble control
     uint16_t clock_default_state  = 0x9000;     // Recommended clock rate
     uint16_t volume_default_state = 0x2000;     // Half volume
@@ -98,9 +107,9 @@ void VS1053b::SystemInit()
     RegisterMap[CLOCKF].reg_value = clock_default_state;
     RegisterMap[VOL].reg_value    = volume_default_state;
 
+    UpdateRemoteRegister(CLOCKF);
     UpdateRemoteRegister(MODE);
     UpdateRemoteRegister(BASS);
-    UpdateRemoteRegister(CLOCKF);
     UpdateRemoteRegister(VOL);
 
     printf("[VS1053b::SystemInit] Updating device registers with default settings.\n");
@@ -137,7 +146,7 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
             XDCS.SetLow();
             for (int byte=0; byte<32; byte++)
             {
-                SPI.SendByte(data[byte]);
+                ssp0_exchange_byte(data[byte]);
             }
             XDCS.SetHigh();
 
@@ -168,7 +177,7 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
                 XDCS.SetLow();
             for (int byte=0; byte<remainder; byte++)
             {
-                SPI.SendByte(data[byte]);
+                ssp0_exchange_byte(data[byte]);
             }
                 XDCS.SetHigh();
                 
@@ -220,13 +229,11 @@ bool VS1053b::SoftwareReset()
         // Should not take more than 1 millisecond
         if (elapsed_us > 1000)
         {
-            HardwareReset();
+            printf("[VS1053b::SoftwareReset] Software reset failed, hardware resetting...\n");
+            // HardwareReset();
             return false;
         }
     }
-
-    // Re-initialize registers
-    SystemInit();
 
     // Reset bit is cleared automatically
     return true;
@@ -700,7 +707,7 @@ inline bool VS1053b::SetXCS(bool value)
     }
     else 
     {
-        XDCS.SetValue(value);
+        XCS.SetValue(value);
         return true;
     }
 }
@@ -762,10 +769,14 @@ inline bool VS1053b::UpdateLocalRegister(SCI_reg reg)
     }
     else
     {
-        SPI.SendByte(OPCODE_READ);
-        SPI.SendByte(reg);
-        data |= SPI.ReceiveByte() << 8;
-        data |= SPI.ReceiveByte();
+        // SPI.SendByte(OPCODE_READ);
+        // SPI.SendByte(reg);
+        // data |= SPI.ReceiveByte() << 8;
+        // data |= SPI.ReceiveByte();
+        ssp0_exchange_byte(OPCODE_READ);
+        ssp0_exchange_byte(reg);
+        data |= ssp0_exchange_byte(0x00) << 8;
+        data |= ssp0_exchange_byte(0x00);
         RegisterMap[reg].reg_value = data;
         SetXCS(true);
         return true;
@@ -823,9 +834,9 @@ uint16_t VS1053b::ReadRam(uint16_t address)
     XCS.SetLow();
 
     // Write address into WRAMADDR
-    SPI.SendByte(OPCODE_WRITE);
-    SPI.SendByte(WRAMADDR);
-    SPI.SendByte(address);
+    ssp0_exchange_byte(OPCODE_WRITE);
+    ssp0_exchange_byte(WRAMADDR);
+    ssp0_exchange_byte(address);
 
     // Wait until DREQ goes high
     if (!WaitForDREQ(100000))
@@ -838,10 +849,10 @@ uint16_t VS1053b::ReadRam(uint16_t address)
     XCS.SetLow();
 
     // Start reading
-    SPI.SendByte(OPCODE_READ);
-    SPI.SendByte(WRAM);
-    data |= SPI.ReceiveByte() << 8;
-    data |= SPI.ReceiveByte();
+    ssp0_exchange_byte(OPCODE_READ);
+    ssp0_exchange_byte(WRAM);
+    data |= ssp0_exchange_byte(0x00) << 8;
+    data |= ssp0_exchange_byte(0x00);
 
     XCS.SetHigh();
 
@@ -906,10 +917,14 @@ bool VS1053b::TransferSCICommand(SCI_reg reg)
         return false;
     }
     // High byte first
-    SPI.SendByte(OPCODE_WRITE);
-    SPI.SendByte(reg);
-    SPI.SendByte(RegisterMap[reg].reg_value >> 8);
-    SPI.SendByte(RegisterMap[reg].reg_value & 0xFF);
+    // SPI.SendByte(OPCODE_WRITE);
+    // SPI.SendByte(reg);
+    // SPI.SendByte(RegisterMap[reg].reg_value >> 8);
+    // SPI.SendByte(RegisterMap[reg].reg_value & 0xFF);
+    ssp0_exchange_byte(OPCODE_WRITE);
+    ssp0_exchange_byte(reg);
+    ssp0_exchange_byte(RegisterMap[reg].reg_value >> 8);
+    ssp0_exchange_byte(RegisterMap[reg].reg_value & 0xFF);
     // Deselect XCS
     SetXCS(true);
 
@@ -940,6 +955,10 @@ bool VS1053b::UpdateRegisterMap()
 {
     for (int reg=MODE; reg<SCI_reg_last_invalid; reg++)
     {
+        if (reg == (SCI_reg)AIADDR)
+        {
+            continue;
+        }
         if (!UpdateLocalRegister((SCI_reg)reg))
         {
             printf("[VS1053b::UpdateRegisterMap] Failed at reg %d\n", reg);

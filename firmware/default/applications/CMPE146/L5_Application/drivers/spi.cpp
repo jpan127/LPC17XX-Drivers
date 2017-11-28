@@ -72,7 +72,7 @@ void SpiBase::Initialize(spi_mode_t mode, pclk_divisor_t divisor)
     SspPtr->CR1  = (mode == SPI_MASTER) ? (1 << 1) : ( (1 << 1) | (1 << 2) );
     // Clock prescale register
     // PCLK / (CPSR * (SCR=0 + 1))
-    SspPtr->CPSR = 4; // 48Mhz / 4 = 12Mhz
+    SspPtr->CPSR = 36; // 48Mhz / 4 = 12Mhz
 
     printf("SPI %i initialized.\n", Port);
 }
