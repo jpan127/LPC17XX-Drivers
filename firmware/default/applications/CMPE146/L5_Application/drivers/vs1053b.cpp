@@ -47,12 +47,16 @@ VS1053b::VS1053b(vs1053b_gpio_init_t init) :    DREQ(init.port_dreq,   init.pin_
 
 void VS1053b::SystemInit()
 {
-    // Reset device
+    // Hardware reset
     printf("[VS1053b::SystemInit] Resetting device...\n");
     SetReset(false);
-    vTaskDelay(2 / portTICK_PERIOD_MS);
     SetReset(true);
-    vTaskDelay(2 / portTICK_PERIOD_MS);
+    if (!WaitForDREQ(100000))
+    {
+        printf("[VS1053b::SystemInit] Failed to hardware reset timeout of 100000us.\n");
+    }
+
+    // Software reset
     if (!SoftwareReset())
     {
         printf("[VS1053b::SystemInit] Software reset failed...\n");
@@ -97,20 +101,21 @@ void VS1053b::SystemInit()
     UpdateLocalRegister(STATUS);
     printf("[VS1053b::SystemInit] Initial status: %04X\n", RegisterMap[STATUS].reg_value);
 
-    uint16_t mode_default_state   = 0x4842;     // Allow mpeg layers 1 + 2, divide clock by 2 = 12MHz
+    uint16_t mode_default_state   = 0x4842;     // LINE1, native SPI mode, 
     uint16_t bass_default_state   = 0x0000;     // Turn off bass enhancement and treble control
-    uint16_t clock_default_state  = 0x9000;     // Recommended clock rate
-    uint16_t volume_default_state = 0x2000;     // Half volume
+    uint16_t clock_default_state  = 0x6000;     // Recommended clock rate
+    uint16_t volume_default_state = 0;     // Half volume
 
     RegisterMap[MODE].reg_value   = mode_default_state;
-    RegisterMap[BASS].reg_value   = bass_default_state;
+    // RegisterMap[BASS].reg_value   = bass_default_state;
     RegisterMap[CLOCKF].reg_value = clock_default_state;
-    RegisterMap[VOL].reg_value    = volume_default_state;
+    // RegisterMap[VOL].reg_value    = volume_default_state;
 
-    UpdateRemoteRegister(CLOCKF);
     UpdateRemoteRegister(MODE);
-    UpdateRemoteRegister(BASS);
-    UpdateRemoteRegister(VOL);
+    UpdateRemoteRegister(CLOCKF);
+
+    // UpdateRemoteRegister(BASS);
+    // UpdateRemoteRegister(VOL);
 
     printf("[VS1053b::SystemInit] Updating device registers with default settings.\n");
 
@@ -134,21 +139,37 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
 
     if (size < 1)
     {
+        printf("VS1053b::TransferData: Transfer failed size < 1\n");
         return TRANSFER_FAILED;
     }
     else
     {
+        printf("VS1053b::TransferData: Transfering...\n");
         uint32_t cycles    = size / 32;
         uint16_t remainder = size % 32;
 
+        if (!SetXDCS(false))
+        {
+            printf("TRANSFERDATA: Failed to set XDCS low!\n");
+            return TRANSFER_FAILED;
+        }
+
         for (uint32_t i=0; i<cycles; i++)
         {
-            XDCS.SetLow();
+            // if (!SetXDCS(false))
+            // {
+            //     printf("TRANSFERDATA: Failed to set XDCS low!\n");
+            //     return TRANSFER_FAILED;
+            // }
             for (int byte=0; byte<32; byte++)
             {
-                ssp0_exchange_byte(data[byte]);
+                ssp0_exchange_byte(data[i * 32 + byte]);
             }
-            XDCS.SetHigh();
+            // if (!SetXDCS(true))
+            // {
+            //     printf("TRANSFERDATA: Failed to set XDCS low!\n");
+            //     return TRANSFER_FAILED;
+            // }
 
             // Check for pending cancellation request
             if (Status.waiting_for_cancel)
@@ -172,22 +193,33 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
 
         if (remainder > 0)
         {
-            for (int i=0; i<remainder; i++)
+            if (!SetXDCS(false))
             {
-                XDCS.SetLow();
+                printf("TRANSFERDATA: Failed to set XDCS low!\n");
+                return TRANSFER_FAILED;
+            }
             for (int byte=0; byte<remainder; byte++)
             {
-                ssp0_exchange_byte(data[byte]);
+                ssp0_exchange_byte(data[cycles * 32 + byte]);
             }
-                XDCS.SetHigh();
-                
-                // Wait until DREQ goes high
-                if (!WaitForDREQ(100000))
-                {
-                    printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
-                    return TRANSFER_FAILED;
-                }
+            if (!SetXDCS(true))
+            {
+                printf("TRANSFERDATA: Failed to set XDCS low!\n");
+                return TRANSFER_FAILED;
             }
+            
+            // Wait until DREQ goes high
+            if (!WaitForDREQ(100000))
+            {
+                printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
+                return TRANSFER_FAILED;
+            }
+        }
+
+        if (!SetXDCS(true))
+        {
+            printf("TRANSFERDATA: Failed to set XDCS low!\n");
+            return TRANSFER_FAILED;
         }
         return TRANSFER_SUCCESS;
     }
@@ -213,26 +245,19 @@ void VS1053b::HardwareReset()
 
 bool VS1053b::SoftwareReset()
 {
+    static const uint16_t RESET_BIT = (1 << 2);
+
     UpdateLocalRegister(MODE);
 
     // Set reset bit
-    RegisterMap[MODE].reg_value |= (1 << 2);
+    RegisterMap[MODE].reg_value |= RESET_BIT;
     UpdateRemoteRegister(MODE);
 
-    uint16_t elapsed_us = 0;
-    // Wait for 3 us at a time until DREQ goes high
-    while (!DeviceReady())
+    // Wait until DREQ goes high
+    if (!WaitForDREQ(100000))
     {
-        BlockMicroSeconds(3);
-        elapsed_us += 3;
-
-        // Should not take more than 1 millisecond
-        if (elapsed_us > 1000)
-        {
-            printf("[VS1053b::SoftwareReset] Software reset failed, hardware resetting...\n");
-            // HardwareReset();
-            return false;
-        }
+        printf("[VS1053b::SoftwareReset] Failed to software reset timeout of 100000us.\n");
+        return false;
     }
 
     // Reset bit is cleared automatically
@@ -699,6 +724,10 @@ inline bool VS1053b::SetXDCS(bool value)
     }
     else 
     {
+        if (value)
+            LPC_GPIO0->FIOSET |= (1 << 30);
+        else
+            LPC_GPIO0->FIOCLR |= (1 << 30);
         XDCS.SetValue(value);
         return true;
     }
