@@ -479,6 +479,17 @@ vs1053b_transfer_status_E VS1053b::PlaySegment(uint8_t *mp3, uint32_t size, bool
     // If first segment, set up for playback
     if (!Status.playing)
     {
+        printf("[VS1053b::PlaySegment] First segment.\n");
+
+        // Resync
+        RegisterMap[MODE].reg_value = 0x4800;
+        UpdateRemoteRegister(MODE);
+        RegisterMap[WRAMADDR].reg_value = 0x1E29;
+        UpdateRemoteRegister(WRAMADDR);
+        RegisterMap[WRAM].reg_value = 0x0;
+        UpdateRemoteRegister(WRAM);
+
+        // Reset counter
         segment_counter = 0;
 
         // Clear decode time

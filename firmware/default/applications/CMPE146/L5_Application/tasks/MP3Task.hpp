@@ -28,8 +28,8 @@ static const vs1053b_gpio_init_t gpio_init = {
     .port_xcs   = GPIO_PORT0,
     .port_xdcs  = GPIO_PORT0,
     .pin_reset  = 30,
-    .pin_dreq   = 29,
-    .pin_xcs    = 1,
+    .pin_dreq   = 19,
+    .pin_xcs    = 29,
     .pin_xdcs   = 0,
 };
 
