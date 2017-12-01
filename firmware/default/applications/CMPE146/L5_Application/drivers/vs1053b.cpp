@@ -472,30 +472,6 @@ void VS1053b::SetLowPowerMode(bool on)
     Status.low_power_mode = on;
 }
 
-// May need rethinking
-    // void VS1053b::PlayEntireSong(uint8_t *mp3, uint32_t size)
-    // {
-    //     // Clear decode time
-    //     ClearDecodeTime();
-
-    //     // Send 2 dummy bytes to SDI
-    //     static const uint8_t dummy_short[] = { 0x00, 0x00 };
-    //     TransferData(&dummy_short, 2);
-
-    //     Status.playing = true;
-
-    //     // Send mp3 file
-    //     TransferData(mp3, size);
-
-    //     // To signal the end of the mp3 file need to set 2052 bytes of EndFillByte
-    //     SendEndFillByte(2052);
-
-    //     // Wait 50 ms buffer time between playbacks
-    //     vTaskDelay(50 / portTICK_PERIOD_MS);
-
-    //     Status.playing = false;
-    // }
-
 vs1053b_transfer_status_E VS1053b::PlaySegment(uint8_t *mp3, uint32_t size, bool last_segment)
 {
     static uint32_t segment_counter = 0;
@@ -505,14 +481,6 @@ vs1053b_transfer_status_E VS1053b::PlaySegment(uint8_t *mp3, uint32_t size, bool
     if (!Status.playing)
     {
         printf("[VS1053b::PlaySegment] First segment.\n");
-
-        // Resync
-        RegisterMap[MODE].reg_value = 0x4800;
-        UpdateRemoteRegister(MODE);
-        RegisterMap[WRAMADDR].reg_value = 0x1E29;
-        UpdateRemoteRegister(WRAMADDR);
-        RegisterMap[WRAM].reg_value = 0x0;
-        UpdateRemoteRegister(WRAM);
 
         // Reset counter
         segment_counter = 0;
