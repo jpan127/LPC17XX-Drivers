@@ -10,7 +10,7 @@
 //    MP3Task --> MessageTxQueue --> ESP32Task --> UART --> ESP32    //
 ///////////////////////////////////////////////////////////////////////
 
-void ESP32Task(void *p)
+void MailboxTask(void *p)
 {
     // Setup uart
     const uint32_t baud_rate = 115200;
@@ -20,7 +20,10 @@ void ESP32Task(void *p)
     command_packet_S command_packet       = { 0 };
     uint8_t buffer[130] = { 0 };
 
+    // Status flags
     parser_status_E status;
+    bool sending = false;
+    uint32_t rx_buffer_pointer = 0;
 
     // Main loop
     while (1)
@@ -28,7 +31,7 @@ void ESP32Task(void *p)
         // Check if pending messages to be received from ESP32
         if (UART.RxAvailable())
         {
-            // Run state machine
+            // Run state machine one byte at a time
             status = command_packet_parser(UART.ReceiveByte, &command_packet);
             // Check status of state machine
             switch (status)
@@ -47,15 +50,28 @@ void ESP32Task(void *p)
             }
         }
 
-        // Check if pending messages to be sent to ESP32 (no wait)
-        if (xQueueReceive(MessageTxQueue, &diagnostic_packet, 0))
+        if (!sending)
         {
-            // Convert packet to array
-            diagnostic_packet_to_array(buffer, &diagnostic_packet);
-            // Send bytes to ESP32
-            for (int i=0; i < (2 + diagnostic_packet.header.bits.length); i++)
+            // Check if pending messages to be sent to ESP32 (no wait)
+            if (xQueueReceive(MessageTxQueue, &diagnostic_packet, 0))
             {
-                UART.SendByte(buffer[i]);
+                sending = true;
+                rx_buffer_pointer = 0;
+                // Convert packet to array
+                diagnostic_packet_to_array(buffer, &diagnostic_packet);
+            }
+        }
+        else
+        {
+            // Send a byte to ESP32 at a time
+            if (rx_buffer_pointer < diagnostic_packet.header.bits.length)
+            {
+                UART.SendByte(buffer[rx_buffer_pointer++]);
+            }
+            // Done
+            else
+            {
+                sending = false;
             }
         }
 
