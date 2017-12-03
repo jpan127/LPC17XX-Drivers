@@ -1,12 +1,14 @@
 #include "mp3_tasks.hpp"
 
-#include <queue.h>
 #include "uart.hpp"
 #include "msg_protocol.hpp"
 
 #define UART (Uart3::getInstance())
 
-static const uint8_t end_of_packet_symbol = 0xAA;
+///////////////////////////////////////////////////////////////////////
+//    ESP32 --> UART --> ESP32Task --> MessageRxQueue --> MP3Task    //
+//    MP3Task --> MessageTxQueue --> ESP32Task --> UART --> ESP32    //
+///////////////////////////////////////////////////////////////////////
 
 void ESP32Task(void *p)
 {
@@ -46,15 +48,17 @@ void ESP32Task(void *p)
         }
 
         // Check if pending messages to be sent to ESP32 (no wait)
-        if (xQueueReceive(MessageTxQueue, diagnostic_packet, 0))
+        if (xQueueReceive(MessageTxQueue, &diagnostic_packet, 0))
         {
             // Convert packet to array
             diagnostic_packet_to_array(buffer, &diagnostic_packet);
             // Send bytes to ESP32
-            for (int i=0; i<(2 + diagnostic_packet.header.bits.length); i++)
+            for (int i=0; i < (2 + diagnostic_packet.header.bits.length); i++)
             {
                 UART.SendByte(buffer[i]);
             }
         }
+
+        vTaskDelay(1 / periodTICK_PERIOD_MS);
     }
 }

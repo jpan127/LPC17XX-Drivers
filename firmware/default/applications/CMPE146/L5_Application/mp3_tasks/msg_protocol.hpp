@@ -89,10 +89,6 @@ typedef struct
     uint8_t command[2];             // The actual data
 } __attribute__((packed)) command_packet_S;
 
-// Queues
-QueueHandle_t MessageRxQueue = xQueueCreate(3, sizeof(command_packet_S));
-QueueHandle_t MessageTxQueue = xQueueCreate(3, sizeof(diagnostic_packet_S));
-
 // @description : Converts an enum to a string
 // @param state : The enum to be converted
 // @returns     : A const char string literal
