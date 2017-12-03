@@ -76,75 +76,50 @@ void VS1053b::SystemInit()
         printf("[VS1053b::SystemInit] Failed to set XDCS to HIGH at init.\n");
     }
 
-    // Check if booted in RTMIDI mode which causes issues with MP3 not playing
-    // Fix : http://www.bajdi.com/lcsoft-vs1053-mp3-module/#comment-33773
-    // UpdateLocalRegister(AUDATA);
-    // if (44100 == RegisterMap[AUDATA].reg_value || 44101 == RegisterMap[AUDATA].reg_value)
-    // {
-    //     printf("[VS1053b::SystemInit] Defaulted to MIDI mode. Switching to MP3 mode.\n");
-    //     // Switch to MP3 mode if in RTMIDI mode
-    //     RegisterMap[WRAMADDR].reg_value = 0xC017;
-    //     RegisterMap[WRAM].reg_value     = 3;
-    //     UpdateRemoteRegister(WRAMADDR);
-    //     UpdateRemoteRegister(WRAM);
-    //     RegisterMap[WRAMADDR].reg_value = 0xC019;
-    //     RegisterMap[WRAM].reg_value     = 0;
-    //     UpdateRemoteRegister(WRAMADDR);
-    //     UpdateRemoteRegister(WRAM);
-
-    //     // Wait a little to make sure it was written
-    //     vTaskDelay(100 / portTICK_PERIOD_MS);
-    //     // Software reset to boot into MP3 mode
-    //     SoftwareReset();
-    // }
-
     UpdateLocalRegister(STATUS);
     printf("[VS1053b::SystemInit] Initial status: %04X\n", RegisterMap[STATUS].reg_value);
 
-    uint16_t mode_default_state   = 0x4842;     // LINE1, native SPI mode, 
-    uint16_t bass_default_state   = 0x0000;     // Turn off bass enhancement and treble control
-    uint16_t clock_default_state  = 0x6000;     // Recommended clock rate
-    uint16_t volume_default_state = 0;     // Half volume
+    const uint16_t mode_default_state   = 0x4800;
+    const uint16_t clock_default_state  = 0x6000;
+    const uint16_t volume_default_state = 0x2020;
 
     RegisterMap[MODE].reg_value   = mode_default_state;
-    // RegisterMap[BASS].reg_value   = bass_default_state;
     RegisterMap[CLOCKF].reg_value = clock_default_state;
-    // RegisterMap[VOL].reg_value    = volume_default_state;
+    RegisterMap[VOL].reg_value    = volume_default_state;
 
     UpdateRemoteRegister(MODE);
     UpdateRemoteRegister(CLOCKF);
-
-    // UpdateRemoteRegister(BASS);
-    // UpdateRemoteRegister(VOL);
+    UpdateRemoteRegister(VOL);
 
     printf("[VS1053b::SystemInit] Updating device registers with default settings.\n");
 
-    // Update local register values
-    if (!UpdateRegisterMap())
-    {
-        printf("[VS1053b::SystemInit] Failed to update register map.\n");
-    }
+    // // Update local register values
+    // if (!UpdateRegisterMap())
+    // {
+    //     printf("[VS1053b::SystemInit] Failed to update register map.\n");
+    // }
 
+    UpdateLocalRegister(CLOCKF);
+    printf("CLOCKF: %d\n", RegisterMap[CLOCKF].reg_value);
     printf("[VS1053b::SystemInit] System initialization complete.\n");
 }
 
 vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
 {
-    // Wait until DREQ goes high
-    if (!WaitForDREQ(100000))
-    {
-        printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000us.\n");
-        return TRANSFER_FAILED;
-    }
+    // // Wait until DREQ goes high
+    // if (!WaitForDREQ(100000))
+    // {
+    //     printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000us.\n");
+    //     return TRANSFER_FAILED;
+    // }
+    while ( !GetDREQ() );
 
     if (size < 1)
     {
-        printf("VS1053b::TransferData: Transfer failed size < 1\n");
         return TRANSFER_FAILED;
     }
     else
     {
-        printf("VS1053b::TransferData: Transfering...\n");
         uint32_t cycles    = size / 32;
         uint16_t remainder = size % 32;
 
@@ -156,64 +131,34 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
 
         for (uint32_t i=0; i<cycles; i++)
         {
-            // if (!SetXDCS(false))
-            // {
-            //     printf("TRANSFERDATA: Failed to set XDCS low!\n");
-            //     return TRANSFER_FAILED;
-            // }
             for (int byte=0; byte<32; byte++)
             {
                 ssp0_exchange_byte(data[i * 32 + byte]);
             }
-            // if (!SetXDCS(true))
+            
+            // // Wait until DREQ goes high
+            // if (!WaitForDREQ(100000))
             // {
-            //     printf("TRANSFERDATA: Failed to set XDCS low!\n");
+            //     printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
             //     return TRANSFER_FAILED;
             // }
-
-            // Check for pending cancellation request
-            if (Status.waiting_for_cancel)
-            {
-                // Check cancel bit
-                UpdateLocalRegister(MODE);
-                // Cancel succeeded, exit, and return status to bubble up to parent function
-                if (RegisterMap[MODE].reg_value & (1 << 3))
-                {
-                    return TRANSFER_CANCELLED;
-                }
-            }
-            
-            // Wait until DREQ goes high
-            if (!WaitForDREQ(100000))
-            {
-                printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
-                return TRANSFER_FAILED;
-            }
+            while ( !GetDREQ() );
         }
 
         if (remainder > 0)
         {
-            if (!SetXDCS(false))
-            {
-                printf("TRANSFERDATA: Failed to set XDCS low!\n");
-                return TRANSFER_FAILED;
-            }
             for (int byte=0; byte<remainder; byte++)
             {
                 ssp0_exchange_byte(data[cycles * 32 + byte]);
             }
-            if (!SetXDCS(true))
-            {
-                printf("TRANSFERDATA: Failed to set XDCS low!\n");
-                return TRANSFER_FAILED;
-            }
             
-            // Wait until DREQ goes high
-            if (!WaitForDREQ(100000))
-            {
-                printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
-                return TRANSFER_FAILED;
-            }
+            // // Wait until DREQ goes high
+            // if (!WaitForDREQ(100000))
+            // {
+            //     printf("[VS1053b::TransferData] Failed to transfer data timeout of 100000.\n");
+            //     return TRANSFER_FAILED;
+            // }
+            while ( !GetDREQ() );
         }
 
         if (!SetXDCS(true))
@@ -221,6 +166,19 @@ vs1053b_transfer_status_E VS1053b::TransferData(uint8_t *data, uint32_t size)
             printf("TRANSFERDATA: Failed to set XDCS low!\n");
             return TRANSFER_FAILED;
         }
+
+        // Check for pending cancellation request
+        if (Status.waiting_for_cancel)
+        {
+            // Check cancel bit
+            UpdateLocalRegister(MODE);
+            // Cancel succeeded, exit, and return status to bubble up to parent function
+            if (RegisterMap[MODE].reg_value & (1 << 3))
+            {
+                return TRANSFER_CANCELLED;
+            }
+        }
+
         return TRANSFER_SUCCESS;
     }
 }
@@ -480,7 +438,7 @@ vs1053b_transfer_status_E VS1053b::PlaySegment(uint8_t *mp3, uint32_t size, bool
     // If first segment, set up for playback
     if (!Status.playing)
     {
-        printf("[VS1053b::PlaySegment] First segment.\n");
+        printf("[VS1053b::PlaySegment] Playback starting...\n");
 
         // Reset counter
         segment_counter = 0;
@@ -789,6 +747,13 @@ inline bool VS1053b::UpdateLocalRegister(SCI_reg reg)
         SetXCS(true);
         return true;
     }
+
+    // Wait until DREQ goes high
+    if (!WaitForDREQ(100000))
+    {
+        printf("[VS1053b::UpdateLocalRegister] Failed to update register: %d, DREQ timeout of 100000.\n", reg);
+        return false;
+    }
 }
 
 inline bool VS1053b::UpdateRemoteRegister(SCI_reg reg)
@@ -936,12 +901,19 @@ bool VS1053b::TransferSCICommand(SCI_reg reg)
     // Deselect XCS
     SetXCS(true);
 
-    // CLOCKF is the only register where the calculation is based on XTALI not CLKI
-    const bool reg_is_clockf = (CLOCKF == reg);
+    // // CLOCKF is the only register where the calculation is based on XTALI not CLKI
+    // const bool reg_is_clockf = (CLOCKF == reg);
 
-    // Delay amount of time after writing to SCI register to safely execute other commands
-    uint8_t delay_us = ClockCyclesToMicroSeconds(RegisterMap[reg].clock_cycles, reg_is_clockf);
-    BlockMicroSeconds(delay_us);
+    // // Delay amount of time after writing to SCI register to safely execute other commands
+    // uint8_t delay_us = ClockCyclesToMicroSeconds(RegisterMap[reg].clock_cycles, reg_is_clockf);
+    // BlockMicroSeconds(delay_us);
+
+    // Wait until DREQ goes high
+    if (!WaitForDREQ(100000))
+    {
+        printf("[VS1053b::TransferSCICommand] Failed to update register: %d, DREQ timeout of 100000us.\n", reg);
+        return false;
+    }
 
     return true;
 }
@@ -967,12 +939,11 @@ bool VS1053b::UpdateRegisterMap()
         {
             continue;
         }
-        if (!UpdateLocalRegister((SCI_reg)reg))
+        else if (!UpdateLocalRegister((SCI_reg)reg))
         {
             printf("[VS1053b::UpdateRegisterMap] Failed at reg %d\n", reg);
             return false;
         }
-        vTaskDelay(1 / portTICK_PERIOD_MS);
     }
 
     return true;
