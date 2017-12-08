@@ -51,6 +51,7 @@ CFLAGS = -mcpu=cortex-m3 						\
     -I"$(PROJ_DIR)/$(PROJ)/L4_IO"	 			\
     -I"$(PROJ_DIR)/$(PROJ)/L5_Application"		\
     -I"$(PROJ_DIR)/$(PROJ)/L5_Application/labs" \
+    -I"$(PROJ_DIR)/$(PROJ)/L5_Application/drivers" \
     -I"$(PROJ_DIR)/$(PROJ)/L5_Application/tasks" \
     -I"$(PROJ_DIR)/$(PROJ)/"
 

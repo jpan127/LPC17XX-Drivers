@@ -1,7 +1,7 @@
-#pragma once
+#include "mp3_tasks.hpp"
+
 #include <ff.h>
 #include <ssp0.h>
-#include <scheduler_task.hpp>
 #include "L5_Application/drivers/vs1053b.hpp"
 #include "L5_Application/drivers/buttons.hpp"
 
@@ -22,4 +22,4 @@ typedef struct
     mpe_next_state_E next_state;
 } MP3_status_S;
 
-void MP3Task(void *p);
+void DecoderTask(void *p);
