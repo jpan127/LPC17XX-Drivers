@@ -11,7 +11,6 @@ typedef uint8_t 							gpio_pin_t;
 typedef enum {GPIO_PORT0, GPIO_PORT1,
 			  GPIO_PORT2, GPIO_PORT3} 		gpio_port_t;
 typedef enum {INPUT, OUTPUT} 				gpio_mode_t;
-typedef enum {HIGH, LOW} 					gpio_value_t;
 // Forward declaration necessary for linkage
 typedef LPC_GPIO_type LPC_GPIO_Typedef;
 

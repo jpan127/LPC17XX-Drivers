@@ -1,16 +1,9 @@
 #pragma once
-#include <stdio.h>
-#include <string>
-#include <cassert>
-#include <sys_config.h>
 #include <FreeRTOS.h>
 #include <LPC17xx.h>
-#include <task.h>
 #include <semphr.h>
-#include <queue.h>
-#include <printf_lib.h>
+#include <singleton_template.h>
 #include "L5_Application/drivers/utilities.hpp"
-#include "L0_LowLevel/source/lpc_peripherals.h"
 
 #define DEFAULT_BAUDRATE (9600)
 // Interrupt Enable Bits
@@ -36,8 +29,17 @@
 
 
 // Not using UART0 or UART1
-typedef enum { UART_PORT2 = 2, UART_PORT3 = 3 } uart_port_t;
-typedef enum { POLLING, INTERRUPT }     uart_mode_t;
+typedef enum 
+{
+    UART_PORT2 = 2, 
+    UART_PORT3 = 3 
+} uart_port_t;
+
+typedef enum 
+{ 
+    POLLING, 
+    INTERRUPT 
+} uart_mode_t;
 
 // Global Variables
 extern SemaphoreHandle_t UartSem;
@@ -48,13 +50,13 @@ extern "C"
     void UART3_IRQHandler();
 }
 
-// UART0: TX: P0.2      RX: P0.3
-// UART2: TX: P0.10     RX: P0.11
-// UART3: TX: P0.0      RX: P0.1
-// Base class, don't use
 class Uart
 {
 protected:
+
+    // UART0: TX: P0.2      RX: P0.3
+    // UART2: TX: P0.10     RX: P0.11
+    // UART3: TX: P0.0      RX: P0.1
 
     // Constructor
     Uart(uart_port_t port);
@@ -86,12 +88,37 @@ protected:
     // Receive byte
     bool    ReceiveByte(byte_t *byte);
 
+private:
 
     // Member variables
-    uart_port_t         Port;
-    LPC_UART_TypeDef    *UartPtr;
-    IRQn_Type           IRQPtr;
+    uart_port_t      Port;
+    LPC_UART_TypeDef *UartPtr;
+    IRQn_Type        IRQPtr;
 };
+
+class Uart2 : public Uart, public singleton_template <Uart2>
+{
+private:
+
+    Uart2() : Uart(UART_PORT2)
+    {
+        // Empty
+    }
+
+    friend class singleton_template <Uart2>;
+}
+
+class Uart3 : public Uart, public singleton_template <Uart3>
+{
+private:
+
+    Uart3() : Uart(UART_PORT2)
+    {
+        // Empty
+    }
+
+    friend class singleton_template <Uart3>;
+}
 
 /*//////////////////////////////////////////////////////////////////////////////////////////////////
     [RBR] Receiver Buffer Register     : Contains the next received character to be read.

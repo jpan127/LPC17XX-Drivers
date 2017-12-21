@@ -1,33 +1,34 @@
 #include "gpio_output.hpp"
 
-void GpioOutput::SetValue(gpio_value_t value)
+void GpioOutput::SetValue(bool value)
 {
-    switch (value)
-    {
-        case HIGH: GpioPtr->FIOSET |= (1 << Pin); break;
-        case LOW:  GpioPtr->FIOCLR |= (1 << Pin); break;
-    }
+    (value) ? (GpioPtr->FIOSET |= (1 << Pin)) : (GpioPtr->FIOCLR |= (1 << Pin));
 
-    // Store last set value
-    Value = value;
+    LastValue = value;
 }
 
 void GpioOutput::SetHigh()
 {
-    SetValue(HIGH);
+    SetValue(true);
+
+    LastValue = true;
 }
 
 void GpioOutput::SetLow()
 {
-    SetValue(LOW);
+    SetValue(false);
+
+    LastValue = false;
 }
 
 void GpioOutput::Toggle()
 {
     ( IsHigh() ) ? ( SetLow() ) : ( SetHigh() );
+
+    LastValue = ~LastValue;
 }
 
 bool GpioOutput::GetValue()
 {
-    return Value;
+    return LastValue;
 }

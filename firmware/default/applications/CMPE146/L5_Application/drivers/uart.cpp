@@ -1,7 +1,16 @@
 #include "L5_Application/drivers/uart.hpp"
 
-static QueueHandle_t RxQueue = xQueueCreate(64, sizeof(char));
-static QueueHandle_t TxQueue = xQueueCreate(64, sizeof(char));
+#include <stdio.h>
+#include <string>
+#include <cassert>
+#include <sys_config.h>
+
+#include <task.h>
+#include <queue.h>
+#include "L0_LowLevel/source/lpc_peripherals.h"
+
+static QueueHandle_t RxQueue = xQueueCreate(128, sizeof(char));
+static QueueHandle_t TxQueue = xQueueCreate(128, sizeof(char));
 
 // Interrupt Handlers
 extern "C" 
@@ -70,7 +79,8 @@ extern "C"
 
             // Character Time Out Indication
             case IIR_TIO_BIT:
-                while (LPC_UART3->LSR & (1 << 0)) {
+                while (LPC_UART3->LSR & (1 << 0)) 
+                {
                     byte_t byte = LPC_UART3->RBR;
                     xQueueSendFromISR(RxQueue, &byte, &higher_priority_task_woken);
                 }
@@ -79,8 +89,10 @@ extern "C"
             // THRE
             case IIR_THRE_BIT:
                 byte_t byte;
-                for (int i=0; i<16; i++) {
-                    if (!xQueueReceiveFromISR(TxQueue, &byte, &higher_priority_task_woken)) {
+                for (int i=0; i<16; i++) 
+                {
+                    if (!xQueueReceiveFromISR(TxQueue, &byte, &higher_priority_task_woken)) 
+                    {
                         break;
                     }
                     LPC_UART3->THR = byte;
@@ -195,12 +207,14 @@ bool Uart::TxAvailable()
 void Uart::SendString(byte_t *buffer, size_t buffer_size)
 {
     // Error buffer not allocated
-    if (buffer == NULL) {
+    if (buffer == NULL) 
+    {
         printf("[Uart::SendString] Input buffer null.\n");
         return;
     }
 
-    for (size_t i=0; i<buffer_size; i++) {
+    for (size_t i=0; i<buffer_size; i++) 
+    {
         SendByte(buffer[i]);
     }
 }
@@ -208,12 +222,14 @@ void Uart::SendString(byte_t *buffer, size_t buffer_size)
 void Uart::SendString(const char *buffer, size_t buffer_size)
 {
     // Error buffer not allocated
-    if (buffer == NULL) {
+    if (buffer == NULL) 
+    {
         printf("[Uart::SendString] Input buffer null.\n");
         return;
     }
 
-    for (size_t i=0; i<buffer_size; i++) {
+    for (size_t i=0; i<buffer_size; i++) 
+    {
         while ( !SendByte(buffer[i]) );
     }
 }
@@ -222,13 +238,16 @@ bool Uart::SendByte(byte_t byte)
 {
     // Send to queue
     // Blocks
-    if ( !xQueueSend(TxQueue, &byte, portMAX_DELAY) ) {
+    if ( !xQueueSend(TxQueue, &byte, portMAX_DELAY) ) 
+    {
         return false;
     }
 
     // If TX registers are empty, receive byte from queue and send to TX register
-    if ( TxAvailable() ) {
-        if ( xQueueReceive(TxQueue, &byte, 0) ) {
+    if ( TxAvailable() ) 
+    {
+        if ( xQueueReceive(TxQueue, &byte, 0) ) 
+        {
             // Put byte into transmitting register
             UartPtr->THR = byte;
         }
@@ -244,7 +263,8 @@ bool Uart::RxAvailable()
 
 size_t Uart::ReceiveString(byte_t *buffer, size_t buffer_size)
 {
-    if (buffer == NULL) {
+    if (buffer == NULL) 
+    {
         printf("[Uart::ReceiveString] Input buffer null.\n");
         return 0;
     }
@@ -257,13 +277,15 @@ size_t Uart::ReceiveString(byte_t *buffer, size_t buffer_size)
     {
         // Blocks
         ReceiveByte(&byte);
-        if (i < buffer_size) {
+        if (i < buffer_size) 
+        {
             buffer[i] = byte;
         }
     }
 
     // If no null-terminating character, add it
-    if (index < buffer_size && buffer[index-1] != '\0') {
+    if (index < buffer_size && buffer[index-1] != '\0') 
+    {
         buffer[index++] = '\0';
     }
 
@@ -272,5 +294,5 @@ size_t Uart::ReceiveString(byte_t *buffer, size_t buffer_size)
 
 bool Uart::ReceiveByte(byte_t *byte)
 {
-    return xQueueReceive(RxQueue, byte, portMAX_DELAY);
+    return xQueueReceive(RxQueue, byte, 0);
 }

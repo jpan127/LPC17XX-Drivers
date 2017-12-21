@@ -1,22 +1,18 @@
 #include "tasks.hpp"                                    // terminalTask
-#include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
-#include "L5_Application/labs/UartTask.hpp"             // Lab2
-#include "L5_Application/labs/AT45QueryTask.cpp"        // Lab3
-#include "L5_Application/labs/GpioInterruptTask.hpp"    // Lab4
-#include "L5_Application/labs/I2CSlaveTask.hpp"         // Lab5
-#include "L5_Application/labs/I2CMasterTask.hpp"        // Lab5
-#include "L5_Application/labs/OrientationTask.hpp"      // Lab6
-#include "L5_Application/labs/PriorityTasks.hpp"        // Lab6
-#include "L5_Application/labs/ProducerConsumerTasks.cpp" // Lab7
-// #include "infrared.cpp"
-// #include "bluetooth.cpp"
-// #include "motor.hpp"
+// #include "L5_Application/labs/Switch2LedTask.cpp"       // Lab1
+// #include "L5_Application/labs/UartTask.hpp"             // Lab2
+// #include "L5_Application/labs/AT45QueryTask.cpp"        // Lab3
+// #include "L5_Application/labs/GpioInterruptTask.hpp"    // Lab4
+// #include "L5_Application/labs/I2CSlaveTask.hpp"         // Lab5
+// #include "L5_Application/labs/I2CMasterTask.hpp"        // Lab5
+// #include "L5_Application/labs/OrientationTask.hpp"      // Lab6
+// #include "L5_Application/labs/PriorityTasks.hpp"        // Lab6
+// #include "L5_Application/labs/ProducerConsumerTasks.cpp" // Lab7
+#include "mp3_tasks.hpp"
 
 
 int main(void)
-{
-    LedsClearAll();
-    
+{    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     /* Lab 1 | GPIO | VERIFIED */
@@ -79,13 +75,15 @@ int main(void)
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /* Lab 7 | PRODUCER/CONSUMER/WATCHDOG | Finished everything except reading files from SD card */
+    /* Lab 7 | PRODUCER/CONSUMER/WATCHDOG | VERIFIED */
 
-    scheduler_add_task(new ProducerTask(PRIORITY_MEDIUM));
-    scheduler_add_task(new ConsumerTask(PRIORITY_MEDIUM));
-    scheduler_add_task(new WatchdogTask(PRIORITY_HIGH));
+    // scheduler_add_task(new ProducerTask(PRIORITY_MEDIUM));
+    // scheduler_add_task(new ConsumerTask(PRIORITY_MEDIUM));
+    // scheduler_add_task(new WatchdogTask(PRIORITY_HIGH));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    xTaskCreate(DecoderTask, "DecoderTask", 2048, NULL, PRIORITY_MEDIUM, NULL);
 
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
     scheduler_start();

@@ -111,7 +111,7 @@ void I2C::SetDutyCycle(i2c_clock_mode_t mode)
             break;
     }
 
-    printf("[I2C] Baud: %u | Pclk: %u | Duty: %u | High: %u | Low: %u\n", baud, pclk, duty, 
+    printf("[I2C] Baud: %lu | Pclk: %lu | Duty: %lu | High: %u | Low: %u\n", baud, pclk, duty, 
                                                                           high_duty, low_duty);
 
     I2CPtr->I2SCLH = high_duty;
